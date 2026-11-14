@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from zathura.agents.exa_search import search_papers
 from zathura.agents.llm import complete_json
-from zathura.agents.memory import recall_memory, write_memory
+from zathura.agents.memory import memory_receipts, recall_memory, write_memory
 from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 AGENT = "research-scientist"
@@ -134,7 +134,8 @@ def research_hypothesis(history, metrics):
     memories = [m for m in memories if not isinstance(m.get("content"), dict)
                 or not m["content"].get("benchmark_version")
                 or m["content"]["benchmark_version"] == metrics.get("benchmark_version")]
-    sources = search_papers(f"Kepler box least squares {weakness} detrending period grid", 3)
+    query = f"Kepler box least squares {weakness} detrending period grid"
+    sources = search_papers(query, 3)
     memories = [m for m in memories if isinstance(m.get("content"), dict) and (
         (m.get("kind") == "result" and m["content"].get("measurements"))
         or (m.get("kind") == "critique" and m["content"].get("review_policy_version") == "grounded-review-v2"
@@ -192,6 +193,10 @@ def research_hypothesis(history, metrics):
         ids, explanation = [], "No evidenced memory-driven change."
     result["memory_influence"] = {"memory_ids": ids, "explanation": explanation}
     result["recalled_memory_ids"] = [m["memory_id"] for m in memories]
+    result["memory_reads"] = memory_receipts(memories)
+    result["literature_search"] = {"query": query,
+        "call_location": "zathura/agents/exa_search.py:search_papers",
+        "sources": [{k: source[k] for k in ("title", "url", "mock") if k in source} for source in sources]}
     result["current_best_config"] = best
     result["benchmark_version"] = metrics.get("benchmark_version")
     result["context_metrics"] = metrics

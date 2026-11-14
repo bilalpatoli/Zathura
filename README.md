@@ -13,13 +13,13 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open http://localhost:8501. The four tabs are Mission Control, Planet Detection,
-AI Research Timeline, and Experimental Results. Theme settings live in
+Open http://localhost:8501. The five tabs are Mission Control, Planet Detection,
+AI Research Timeline, Experimental Results, and Sponsor Evidence. Theme settings live in
 `.streamlit/config.toml`; charts use `plotly_dark`. No API credentials are needed
 to browse existing results. Missing data produces empty states without automatic
 NASA or agent calls; the committed cache needs no network access.
 
-Launch Research Mission starts a daemon background worker. A two-second Streamlit
+Launch Research Mission starts a daemon background worker. A five-second Streamlit
 fragment refreshes the timeline and results; worker callbacks never call Streamlit.
 Only one mission can run per dashboard process, including across browser sessions.
 Closing the browser does not stop it, but stopping/restarting Streamlit does.
@@ -30,7 +30,8 @@ labelled. A failed mission displays only its error type, not transport secrets.
 
 ### Architecture and data flow
 
-- `app.py`: four `render_*` functions, Plotly presentation and a polling fragment.
+- `app.py`: five tab renderers, Plotly presentation and a polling fragment.
+- `zathura/evidence.py`: read-only search-chain and chronological memory projections.
 - `zathura/dashboard.py`: read-only snapshots from storage, events, memory mirror
   and held-out results; `Mission.launch` owns the background thread.
 - `zathura/engine/__init__.py`: `cached_targets` reads available source metadata
@@ -50,7 +51,17 @@ labelled. A failed mission displays only its error type, not transport secrets.
   that mirror to avoid indexing latency; explicit `recall_remote` and
   `scripts/check_memory.py` verify server-only exchange. Without a key,
   `data/memory.jsonl` is the local backend, not a simulated Past.dev service.
-  The exchange view shows the most recent 200 author-attributed entries.
+  The snapshot reads the most recent 200 author-attributed entries.
+
+Sponsor Evidence shows the latest mission's exact Exa queries, returned source links,
+canonical Scientist citations, final parameter changes and measured outcomes. It
+also shows memory writes and context reads with ids, authors, timestamps and access
+transport (remote past.dev, its local mirror, or local-only JSONL). A read receipt
+means the memory was supplied as agent context, not that every entry affected the
+decision. Deterministic veto cards show the first-choice and replacement configs.
+The optional `literature_search` and `memory_reads` event fields are additive;
+legacy records without them explicitly say provenance was not recorded. The UI
+never infers a remote read from a configured key or from a successful remote write.
 
 ### Methodology and limitations
 

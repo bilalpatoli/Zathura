@@ -8,13 +8,14 @@ import streamlit as st
 
 from zathura.dashboard import Mission, snapshot
 from zathura.engine import inspect_target
-
-ICONS = {"research-scientist": "🔬", "skeptic": "🛡️", "engine": "🔭", "orchestrator": "🚀"}
+from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
 
 
 def badge(source):
     if source == "placeholder":
         st.markdown('<span class="placeholder">PLACEHOLDER engine</span>', unsafe_allow_html=True)
+    elif source == "real":
+        st.markdown('<span class="real-source">REAL Kepler source</span>', unsafe_allow_html=True)
 
 
 def metric(label, value, source):
@@ -25,8 +26,22 @@ def metric(label, value, source):
 def chart(fig, title, source):
     badge(source)
     fig.update_layout(template="plotly_dark", title=title, paper_bgcolor="#10182d",
-                      plot_bgcolor="#10182d", margin=dict(l=25, r=20, t=50, b=30), height=320)
+                      plot_bgcolor="#10182d", margin=dict(l=35, r=15, t=65, b=40), height=300,
+                      font=dict(size=13), title_font_size=15,
+                      legend=dict(orientation="h", y=1.12, x=0))
     st.plotly_chart(fig, width="stretch")
+
+
+def measurement_summary(measurements, source):
+    badge(source)
+    labels = {"balanced_accuracy": "Balanced accuracy", "recovery_rate": "Recovery",
+              "false_alarm_rate": "False alarms", "runtime_s": "Runtime (s)"}
+    parts = [f"{label}: {measurements[key]:.4f}" for key, label in labels.items() if key in measurements]
+    st.write(" · ".join(parts) if parts else "Not run · no measured result")
+
+
+def change_label(proposal):
+    return config_change(proposal.get("current_best_config"), proposal.get("proposed_config"))
 
 
 @st.cache_resource
@@ -48,7 +63,7 @@ def render_mission(state, worker):
                 f"past.dev: {'LIVE writes / local mirror reads' if os.getenv('PASTDEV_API_KEY') else 'LOCAL JSONL (not past.dev)'}"]
     st.info(" · ".join(services))
     st.caption("Configured does not guarantee service availability. Historical mock output retains its MOCK labels.")
-    records = state["records"]
+    records = state["current"]
     analyzed = (state["baseline"].get("provenance", {}).get("host_count", 0)
                 if state["baseline"] else 0)
     cols = st.columns(4)
@@ -56,7 +71,7 @@ def render_mission(state, worker):
                                  [analyzed, sum(bool(r["measurements"]) for r in records), sum(r["accepted"] for r in records),
                                   sum(r["reviewer_decision"]["decision"] != "approve" for r in records)]):
         col.metric(label, value)
-    st.caption(f"Cached source curves: {len(state['targets'])}. Stars analyzed counts the latest completed dev baseline. Total hypotheses: {len(records)}.")
+    st.caption(f"Latest mission only · {len(state['targets'])} cached source curves · {len(state['records'])} archived hypotheses. Stars analyzed counts the dev baseline.")
     baseline = state["baseline"]
     if baseline:
         source = baseline.get("data_source")
@@ -81,7 +96,7 @@ def render_mission(state, worker):
     iterations = st.slider("Research iterations", 1, 10, 4)
     if st.button("Launch Research Mission", type="primary", disabled=status["running"]):
         if worker.launch(iterations):
-            st.success("Mission launched in a background worker. This page refreshes every two seconds.")
+            st.success("Mission launched in a background worker. This page refreshes every five seconds.")
     st.caption("Launch may call paid APIs when configured. One mission per dashboard process; keep this process alive.")
 
 
@@ -115,77 +130,137 @@ def render_planets(state):
                                  [curve["period_days"], curve["depth"] * 1e6, curve["duration_days"], curve["sde"]]):
         with col:
             metric(label, f"{value:.4f}", source)
-    chart(go.Figure(go.Scattergl(x=curve["time"], y=curve["flux"], mode="markers", marker=dict(size=3, color="#96a6cb"))),
-          "Raw source flux (median normalized) · time in days", source)
+    left, right = st.columns(2)
+    with left:
+        chart(go.Figure(go.Scattergl(x=curve["time"], y=curve["flux"], mode="markers", marker=dict(size=3, color="#96a6cb"))),
+              "Source flux · time (BKJD)", source)
     fig = go.Figure(go.Scattergl(x=curve["time"], y=curve["flat_flux"], mode="markers", name="Flattened", marker=dict(size=3, color="#39dce8")))
     mask = curve["in_transit"]
     fig.add_trace(go.Scattergl(x=curve["time"][mask], y=curve["flat_flux"][mask], mode="markers",
-                              name="Peak transit windows (unverified)", marker=dict(size=5, color="#ad85ff")))
-    chart(fig, "Processed light curve · strongest-peak transit windows highlighted", source)
-    chart(go.Figure(go.Scatter(x=curve["periods"], y=curve["power"], line=dict(color="#ad85ff"))), "BLS power vs period (days)", source)
-    chart(go.Figure(go.Scattergl(x=curve["phase"], y=curve["flat_flux"], mode="markers", marker=dict(size=3, color="#39dce8"))),
-          "Phase folded · days from peak transit center", source)
+                              name="Candidate windows", marker=dict(size=5, color="#ad85ff")))
+    with right:
+        chart(fig, "Flattened flux · candidate windows", source)
+    left, right = st.columns(2)
+    with left:
+        chart(go.Figure(go.Scatter(x=curve["periods"], y=curve["power"], line=dict(color="#ad85ff"))), "BLS power · period (days)", source)
+    with right:
+        chart(go.Figure(go.Scattergl(x=curve["phase"], y=curve["flat_flux"], mode="markers", marker=dict(size=3, color="#39dce8"))),
+              "Phase folded · days from candidate center", source)
 
 
 def render_timeline(state):
     st.header("AI Research Timeline")
-    st.caption("Latest mission • live event log • proposals and critiques are not measured discoveries")
-    authors = {m["memory_id"]: m["agent_id"] for m in state["memories"]}
+    st.caption("Latest mission · one research thread per iteration · full sponsor provenance in Sponsor Evidence")
     if not state["latest"]:
         st.info("No mission events yet.")
-    groups = {}
+        return
+    for chain in proposal_chains(state["latest"]):
+        proposal, completion = chain["proposal"], chain["completion"]
+        iteration = proposal.get("iteration", "?")
+        with st.expander(f"Iteration {iteration}{' · revision' if chain['revision'] else ''} · {change_label(proposal)}", expanded=not chain["superseded"]):
+            st.markdown("**Scientist · research & hypothesis**")
+            st.write(proposal.get("hypothesis", "Hypothesis not recorded"))
+            if proposal.get("memory_influence", {}).get("memory_ids"):
+                verified = proposal["memory_influence"].get("explanation", "").startswith("Deterministic memory veto")
+                st.warning("Memory changed this decision · see Sponsor Evidence" if verified else "Model-reported influence · UNVERIFIED")
+            reviews = [e["payload"] for e in state["latest"] if e.get("step") == ("review_revision" if chain["revision"] else "review")
+                       and e["payload"].get("iteration") == iteration]
+            for review in reviews:
+                st.markdown(f"**Skeptic · {review.get('decision', 'pending').upper()}**")
+                st.write(review.get("rationale", "Reasoning not recorded"))
+            if chain["superseded"]:
+                st.caption("Superseded by a revised proposal · this configuration was not run.")
+            elif completion:
+                st.markdown("**Engine · experiment & evaluation**")
+                measurement_summary(completion.get("measurements", {}), completion.get("record", {}).get("data_source"))
+                st.caption("Accepted dev improvement" if completion.get("accepted") else "No accepted improvement")
+                refs = [proposal.get("memory_id"), *(r.get("memory_id") for r in reviews), completion.get("result_memory_id")]
+                st.caption(f"Shared memory · {sum(bool(ref) for ref in refs)} writes recorded for this thread")
+            else:
+                st.caption("Awaiting review or execution. If the mission failed, inspect the status below.")
     for event in state["latest"]:
-        payload = event.get("payload", {})
-        if not isinstance(payload, dict):
-            continue
-        groups.setdefault(payload.get("iteration", "Mission lifecycle"), []).append(event)
-    for iteration, events in groups.items():
-        with st.expander(f"Iteration {iteration}" if isinstance(iteration, int) else iteration, expanded=True):
-            for event in events:
-                payload, agent = event["payload"], event.get("agent", "orchestrator")
-                if payload.get("cited_sources"):
-                    with st.container(border=True):
-                        st.markdown("📚 **Literature search · Exa sources**")
-                        st.caption("Sources returned with this proposal; mock sources are explicitly labelled.")
-                        for source in payload["cited_sources"]:
-                            st.link_button(("[MOCK] " if source.get("mock") else "Exa · ") + source["title"], source["url"])
-                with st.container(border=True):
-                    st.markdown(f"{ICONS.get(agent, '🛰️')} **{event['step'].replace('_', ' ').title()}** · {agent}")
-                    st.markdown(f":{'violet' if agent == 'skeptic' else 'blue'}[{agent}]")
-                    st.caption(event.get("timestamp", ""))
-                    badge(payload.get("data_source", payload.get("record", {}).get("data_source")))
-                    influence = payload.get("memory_influence", payload if event["step"] == "memory_influence" else {})
-                    if influence.get("memory_ids"):
-                        verified = influence.get("explanation", "").startswith("Deterministic memory veto")
-                        st.warning("Memory changed this decision" if verified else "Model-reported memory influence · UNVERIFIED")
-                        st.write(influence.get("explanation", ""))
-                        for memory_id in influence["memory_ids"]:
-                            st.code(f"{memory_id} · author: {authors.get(memory_id, 'not available in local mirror')}")
-                    for key in ("hypothesis", "decision", "rationale"):
-                        if key in payload:
-                            st.write(f"{key.title()}: {payload[key]}")
-                    if payload.get("measurements"):
-                        badge(payload.get("data_source", payload.get("record", {}).get("data_source")))
-                        st.json(payload["measurements"], expanded=False)
-                    if event["step"] == "experiment_started":
-                        st.write(payload.get("config"))
-                memory_id = payload.get("result_memory_id", payload.get("memory_id"))
-                if memory_id:
-                    with st.container(border=True):
-                        st.markdown(f"🧠 **Memory write** · {authors.get(memory_id, agent)}")
-                        st.code(memory_id)
-    st.subheader("past.dev exchange / shared memory")
-    st.caption("Most recent 200 entries from the local Past.dev mirror when configured, otherwise local JSONL. No remote read is triggered by rendering.")
-    for author in ("research-scientist", "skeptic"):
-        with st.expander(f"{ICONS[author]} {author}"):
-            entries = [m for m in state["memories"] if m["agent_id"] == author]
-            if not entries:
-                st.write("No entries yet.")
-            for entry in entries:
-                st.caption(f"{entry['timestamp']} · {entry['kind']} · {entry['memory_id']}")
-                st.write("Past.dev accepted write" if entry.get("pastdev") else "Local entry / remotely recalled envelope")
-                badge(entry.get("content", {}).get("data_source") if isinstance(entry.get("content"), dict) else None)
-                st.json(entry["content"], expanded=False) if isinstance(entry["content"], dict) else st.write(entry["content"])
+        if event.get("step") == "error":
+            st.error(f"Iteration {event['payload'].get('iteration', '?')} stopped: {event['payload'].get('error_type', 'Unknown error')}")
+
+
+def render_sponsors(state):
+    st.header("Sponsor Evidence")
+    st.caption("Recorded provenance, not inferred activity · latest mission · no remote requests triggered by this view")
+    chains = proposal_chains(state["latest"])
+    authors = {m["memory_id"]: m["agent_id"] for m in state["memories"]}
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Exa · research to result")
+        st.caption("Exact SDK call · Exa.search_and_contents")
+        st.code("zathura/agents/exa_search.py:search_papers", language=None)
+        if not chains:
+            st.info("Launch a mission to record search queries and citation chains.")
+        for index, chain in enumerate(chains):
+            proposal, completion = chain["proposal"], chain["completion"]
+            with st.expander(f"Iteration {proposal.get('iteration', '?')}{' · revision' if chain['revision'] else ''} · source → result", expanded=index == 0):
+                search = proposal.get("literature_search", {})
+                st.caption("Exact query sent to Exa")
+                st.write(search.get("query", "Not recorded in this legacy event"))
+                cited = {s["url"] for s in proposal.get("cited_sources", [])}
+                sources = search.get("sources", proposal.get("cited_sources", []))
+                st.caption("Returned sources" if search else "Recorded citations only · complete search response not recorded")
+                if search and sources:
+                    st.caption("MOCK Exa response" if any(s.get("mock") for s in sources) else "Live Exa response")
+                for source in sources:
+                    label = ("[MOCK] " if source.get("mock") else "") + source["title"]
+                    st.link_button(label, source["url"], width="stretch")
+                    st.caption("Scientist cited → " + change_label(proposal) if source["url"] in cited else "Returned by Exa · not cited")
+                st.markdown("**Hypothesis → experiment**")
+                st.write(proposal.get("hypothesis", "Not recorded"))
+                if chain["superseded"]:
+                    st.caption("Superseded · not run; the revision has its own source chain.")
+                elif completion:
+                    st.caption("Review: " + completion.get("decision", "unknown"))
+                    measurement_summary(completion.get("measurements", {}), completion.get("record", {}).get("data_source"))
+                    if completion.get("measurements"):
+                        st.caption("Experiment ID · " + completion.get("record", {}).get("experiment_id", "Not recorded"))
+                        st.caption("Accepted dev improvement" if completion.get("accepted") else "Did not improve the incumbent")
+                else:
+                    st.caption("No experiment outcome recorded yet.")
+    with right:
+        st.subheader("past.dev · shared intelligence")
+        st.markdown("**Scientist** `research-scientist` ↔ **Skeptic** `skeptic`")
+        st.caption("Accepted writes hit past.dev. Context reads normally use its local mirror; remote recall is labelled separately. Local JSONL is not past.dev.")
+        changes = [c["proposal"] for c in chains if c["proposal"].get("memory_influence", {}).get("memory_ids")]
+        if not changes:
+            st.info("No memory-driven decision change recorded for this mission.")
+        for proposal in changes:
+            influence = proposal["memory_influence"]
+            verified = influence.get("explanation", "").startswith("Deterministic memory veto")
+            with st.container(border=True):
+                st.warning("Memory changed a decision" if verified else "Model-reported influence · UNVERIFIED")
+                st.caption(f"Iteration {proposal.get('iteration', '?')} · evidence-backed veto" if verified else "Not proof of a causal veto")
+                st.write("Before · " + config_change(proposal.get("current_best_config"), proposal.get("first_choice_config")))
+                st.write("After · " + change_label(proposal))
+                reads = {r["memory_id"]: r for r in proposal.get("memory_reads", [])}
+                for memory_id in influence["memory_ids"]:
+                    author = reads.get(memory_id, {}).get("author", authors.get(memory_id, "Not recorded"))
+                    st.caption(f"Caused by {AGENT_NAMES.get(author, author)} · {memory_id}")
+                    st.caption("Read via · " + TRANSPORT_NAMES.get(reads.get(memory_id, {}).get("read_via"), "Not recorded"))
+                before, after = proposal.get("first_choice_config", {}), proposal.get("proposed_config", {})
+                if before and after:
+                    with st.expander("Compare full configurations"):
+                        st.dataframe(pd.DataFrame([{"Parameter": key, "Before": str(before.get(key, "—")), "After": str(value)}
+                                                   for key, value in after.items()]), hide_index=True, width="stretch")
+    st.subheader("Scientist ↔ Skeptic · chronological exchange")
+    st.caption("Read context means memories supplied to that agent after filtering. Write transport requires a local ingestion receipt; older missing provenance stays unverified.")
+    activity = memory_activity(state["latest"], state["memories"])
+    if activity:
+        exchange = pd.DataFrame(activity)
+        exchange["Activity"] = exchange["Agent"] + " · " + exchange["Action"].str.lower()
+        exchange["Time"] = exchange["Time"].str[11:19]
+        exchange["Transport"] = exchange["Transport"].replace({"past.dev accepted write": "past.dev write",
+            "past.dev local mirror": "past.dev mirror", "past.dev remote": "past.dev remote"})
+        st.caption("UTC · " + activity[0]["Time"][:10])
+        st.dataframe(exchange[["Time", "Activity", "Memory author", "Memory ID", "Transport"]],
+                     hide_index=True, width="stretch", height=360)
+    else:
+        st.info("No exchange recorded yet. Older events may not contain context-read receipts.")
 
 
 def render_results(state):
@@ -204,10 +279,20 @@ def render_results(state):
         rows.append(best | {"label": "Best config"})
         frame = pd.DataFrame(rows)
         frame["data_source"] = frame["data_source"].replace({"placeholder": "PLACEHOLDER engine"})
-        st.dataframe(frame, hide_index=True, width="stretch")
+        fields = {"label": "Run", "decision": "Review", "data_source": "Source", "balanced_accuracy": "Balanced accuracy",
+                  "recovery_rate": "Recovery", "false_alarm_rate": "False alarms", "runtime_s": "Runtime (s)"}
+        display = frame[list(fields)].copy()
         for field in ("balanced_accuracy", "recovery_rate", "false_alarm_rate", "runtime_s"):
-            fig = px.bar(frame, x="label", y=field, color="decision", color_discrete_sequence=["#39dce8", "#ad85ff", "#ff829f"])
-            chart(fig, field.replace("_", " ").title(), "placeholder" if any(r["data_source"] == "placeholder" for r in rows) else None)
+            display[field] = display[field].map(lambda value: "—" if pd.isna(value) else f"{value:.4f}")
+        st.dataframe(display.rename(columns=fields), hide_index=True, width="stretch")
+        columns = st.columns(2)
+        for index, field in enumerate(("balanced_accuracy", "recovery_rate", "false_alarm_rate", "runtime_s")):
+            with columns[index % 2]:
+                fig = px.bar(frame, x="label", y=field, color="decision", labels=fields,
+                             color_discrete_map={"baseline": "#39dce8", "approve": "#ad85ff", "reject": "#ff829f"})
+                if field != "runtime_s":
+                    fig.update_yaxes(range=[0, 1])
+                chart(fig, fields[field], "placeholder" if any(r["data_source"] == "placeholder" for r in rows) else "real")
     else:
         st.info("No measured results yet.")
     st.subheader("Held-out test performance · not used for tuning")
@@ -226,37 +311,44 @@ def render_results(state):
             badge(result.get("data_source"))
             st.caption(f"Balanced accuracy 95% confidence interval: [{low:.4f}, {high:.4f}]")
     with st.expander("All stored hypotheses (may span incompatible benchmark versions)"):
-        for record in state["records"]:
-            badge(record["data_source"])
-            st.write(record["hypothesis"])
-            st.write(record["reviewer_decision"])
-            st.json(record["measurements"], expanded=False)
+        archived = [{"Hypothesis": r["hypothesis"], "Review": r["reviewer_decision"]["decision"],
+                     "Balanced accuracy": r["measurements"].get("balanced_accuracy"),
+                     "Source": "PLACEHOLDER engine" if r["data_source"] == "placeholder" else r["data_source"]}
+                    for r in state["records"][-50:]]
+        st.caption("Most recent 50 archived hypotheses · not a cross-benchmark leaderboard")
+        if archived:
+            st.dataframe(pd.DataFrame(archived), hide_index=True, width="stretch")
 
 
 def main():
-    st.set_page_config(page_title="Zathura · Mission Control", page_icon="🪐", layout="wide")
+    st.set_page_config(page_title="Zathura · Mission Control", page_icon="✦", layout="wide")
     st.markdown("""<style>
     .stApp {background:radial-gradient(ellipse at top right,#17183c 0%,#060b18 65%);}
-    h1,h2,h3 {letter-spacing:.04em;} h1 {color:#39dce8;}
+    .block-container {padding-top:2rem;padding-bottom:2rem;}
+    h1,h2,h3 {letter-spacing:.025em;} h1 {color:#39dce8!important;}
+    h2 {font-size:1.7rem!important;} h3 {font-size:1.2rem!important;}
+    [data-testid="stMarkdownContainer"] p {overflow-wrap:anywhere;}
+    [data-testid="stLinkButton"] a {white-space:normal;text-align:left;justify-content:flex-start;}
+    .real-source {display:inline-block;color:#79e4df;border:1px solid #276567;background:#102a34;
+      border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
     .placeholder {display:inline-block;background:#392958;color:#e5caff;border:1px solid #ad85ff;
       border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
     [data-testid="stMetric"] {background:#10182dcc;border:1px solid #293554;border-radius:10px;padding:14px;}
     .stButton button[kind="primary"] {color:#060b18;font-weight:700;}
     </style>""", unsafe_allow_html=True)
-    st.title("🪐 ZATHURA")
+    st.title("ZATHURA")
     st.caption("SEARCH THE STARS. QUESTION THE SIGNAL. REMEMBER THE SCIENCE.")
-    st.caption("Benchmarks inject synthetic transits into real Kepler light curves; results marked PLACEHOLDER come from the "
-               "earlier placeholder engine. No new planet discoveries are claimed.")
+    st.caption("Real Kepler photometry · synthetic transit injections for benchmarking · no new planet discoveries claimed. Historical placeholder and mock output stays labelled.")
     live_dashboard()
 
 
-@st.fragment(run_every=2)
+@st.fragment(run_every=5)
 def live_dashboard():
     state = snapshot()
     if state["warning"]:
         st.warning(state["warning"])
-    tabs = st.tabs(["Mission Control", "Planet Detection", "AI Research Timeline", "Experimental Results"])
-    for tab, render in zip(tabs, [lambda s: render_mission(s, mission()), render_planets, render_timeline, render_results]):
+    tabs = st.tabs(["Mission Control", "Planet Detection", "AI Research Timeline", "Experimental Results", "Sponsor Evidence"])
+    for tab, render in zip(tabs, [lambda s: render_mission(s, mission()), render_planets, render_timeline, render_results, render_sponsors]):
         with tab:
             render(state)
 

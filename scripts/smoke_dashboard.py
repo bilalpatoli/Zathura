@@ -1,4 +1,4 @@
-"""Headless render of all four tabs, including an isolated empty-data case."""
+"""Headless render of all five tabs, including an isolated empty-data case."""
 import sys
 import tempfile
 from pathlib import Path
@@ -18,8 +18,9 @@ def check(label):
     app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=90)
     if app.exception:
         raise AssertionError([e.message for e in app.exception])
+    assert not app.json, "Judge-facing tabs must not dump raw JSON"
     assert [tab.label for tab in app.tabs] == [
-        "Mission Control", "Planet Detection", "AI Research Timeline", "Experimental Results"]
+        "Mission Control", "Planet Detection", "AI Research Timeline", "Experimental Results", "Sponsor Evidence"]
     for tab in app.tabs:
         print(f"PASS {label}: {tab.label}")
     print(f"PASS {label}: {len(app.get('plotly_chart'))} plots; no render exceptions")

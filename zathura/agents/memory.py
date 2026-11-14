@@ -36,6 +36,7 @@ class LocalBackend:
 
     def write_memory(self, agent_id, content, kind, refs=None):
         entry = _entry(agent_id, content, kind, refs)
+        entry["write_via"] = "local_jsonl"
         self.store(entry)
         return entry["memory_id"]
 
@@ -53,7 +54,7 @@ class LocalBackend:
         def score(entry):
             tokens = set(re.findall(r"[a-z0-9_]+", json.dumps(entry["content"]).lower()))
             return len(words & tokens), entry["timestamp"]
-        return sorted(entries, key=score, reverse=True)[:k]
+        return [entry | {"read_via": "local_jsonl"} for entry in sorted(entries, key=score, reverse=True)[:k]]
 
 
 class PastDevBackend:
@@ -105,7 +106,7 @@ class PastDevBackend:
     def recall_memory(self, agent_id, query, k=5):
         local = self.mirror.recall_memory(agent_id, query, k)
         if local:
-            return local
+            return [entry | {"read_via": "pastdev_mirror"} for entry in local]
         remote = self.recall_remote(agent_id, query, k)
         for entry in remote:
             self.mirror.store(entry)
@@ -123,7 +124,7 @@ class PastDevBackend:
                 entry = metadata.get("zathura") if isinstance(metadata, dict) else None
                 if isinstance(entry, dict) and entry.get("agent_id") in AGENTS:
                     entries.setdefault(entry["memory_id"], entry)
-        return list(entries.values())[:k]
+        return [entry | {"read_via": "pastdev_remote"} for entry in list(entries.values())[:k]]
 
 
 def get_backend():
@@ -136,4 +137,12 @@ def write_memory(agent_id, content, kind, refs=None):
 
 
 def recall_memory(agent_id, query, k=5):
-    return get_backend().recall_memory(agent_id, query, k)
+    entries = get_backend().recall_memory(agent_id, query, k)
+    read_at = datetime.now(timezone.utc).isoformat()
+    return [entry | {"read_at": read_at} for entry in entries]
+
+
+def memory_receipts(entries):
+    return [{"memory_id": entry["memory_id"], "author": entry["agent_id"],
+             "read_via": entry.get("read_via", "not_recorded"), "read_at": entry.get("read_at")}
+            for entry in entries]

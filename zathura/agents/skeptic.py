@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from zathura.agents.llm import complete_json
-from zathura.agents.memory import recall_memory, write_memory
+from zathura.agents.memory import memory_receipts, recall_memory, write_memory
 from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 REVIEW_POLICY_VERSION = "grounded-review-v2"
@@ -71,6 +71,7 @@ def review_hypothesis(hypothesis, final_review=False):
     evidence = [m for m in memories if m.get("kind") == "result" and isinstance(m.get("content"), dict)
                 and m["content"].get("measurements")
                 and m["content"].get("benchmark_version") == hypothesis.get("benchmark_version")]
+    reads = memory_receipts(evidence)
     evidence = [{"memory_id": m["memory_id"], "agent_id": m["agent_id"], "kind": "result",
                  "content": {k: m["content"][k] for k in ("proposed_config", "measurements", "benchmark_version") if k in m["content"]}}
                 for m in evidence]
@@ -106,7 +107,7 @@ def review_hypothesis(hypothesis, final_review=False):
         )
     else:
         raise ValueError("Skeptic did not produce a grounded, policy-consistent rationale after correction")
-    critique = raw | {"rationale": rationale, "cited_memory_ids": cited,
+    critique = raw | {"rationale": rationale, "cited_memory_ids": cited, "memory_reads": reads,
                       "dropped_memory_ids": [i for i in raw["cited_memory_ids"] if i not in by_id],
                       "model_reviews": attempts, "comparison_contract": contract,
                       "blocking_facts": facts, "review_policy_version": REVIEW_POLICY_VERSION,
