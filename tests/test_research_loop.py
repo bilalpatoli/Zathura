@@ -12,7 +12,7 @@ import zathura.orchestrator as orchestrator
 from zathura.agents import llm
 from zathura.agents.exa_search import search_papers
 from zathura.agents.scientist import _ground_prose, _normalize, memory_conflicts, research_hypothesis
-from zathura.agents.skeptic import review_hypothesis
+from zathura.agents.skeptic import _blocking_facts, _grounded_text, review_hypothesis
 from zathura.schema import BASELINE_CONFIG
 
 
@@ -86,9 +86,10 @@ class ResearchTests(unittest.TestCase):
 
     def test_memory_changes_first_choice_deterministically(self):
         failed = BASELINE_CONFIG.model_dump() | {"period_grid_size": 5000}
-        memory_id = memory.write_memory("skeptic", {
-            "proposed_config": failed, "decision": "reject", "changed_parameter": "period_grid_size", "direction": 1,
-        }, "critique")
+        memory_id = memory.write_memory("research-scientist", {
+            "proposed_config": failed, "failed": True, "measurements": {"balanced_accuracy": 0.4},
+            "changed_parameter": "period_grid_size", "direction": 1,
+        }, "result")
         hypothesis = research_hypothesis([], {})
         self.assertEqual(hypothesis["first_choice_config"], failed)
         self.assertNotEqual(hypothesis["proposed_config"].period_grid_size, 5000)
@@ -106,6 +107,7 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(approved["decision"], "approve")
         memory.write_memory("research-scientist", {
             "proposed_config": hypothesis["proposed_config"].model_dump(), "failed": True,
+            "measurements": {"balanced_accuracy": 0.4},
         }, "result")
         rejected = review_hypothesis(hypothesis)
         self.assertEqual(rejected["decision"], "reject")
@@ -224,10 +226,13 @@ class ResearchTests(unittest.TestCase):
         unsupported = invalid | {"decision": "reject", "concrete_problem": "duplicate",
                                  "rationale": "Prior experiments failed and yielded limited success.",
                                  "cited_memory_ids": ["nonexistent"], "concerns": ["Previous runs already failed."]}
-        with patch("zathura.agents.skeptic.complete_json", return_value=unsupported):
+        repaired = unsupported | {"decision": "approve", "concrete_problem": "none", "cited_memory_ids": [],
+                                  "rationale": "The period_grid_size change is bounded and uses identical dev examples.", "concerns": []}
+        with patch("zathura.agents.skeptic.complete_json", side_effect=[unsupported, repaired]) as client:
             critique = review_hypothesis(hypothesis, final_review=True)
+        self.assertEqual(client.call_count, 2)
         self.assertEqual(critique["decision"], "approve")
-        self.assertEqual(critique["dropped_memory_ids"], ["nonexistent"])
+        self.assertEqual(critique["model_reviews"][0], unsupported)
         self.assertEqual(critique["prior_outcomes"], [])
         self.assertNotIn("Prior experiments", critique["rationale"])
         self.assertEqual(critique["concerns"], [])
@@ -235,7 +240,9 @@ class ResearchTests(unittest.TestCase):
         evidence_id = memory.write_memory("research-scientist", {
             "proposed_config": hypothesis["proposed_config"].model_dump(), "measurements": metrics, "failed": True,
         }, "result")
-        with patch("zathura.agents.skeptic.complete_json", return_value=unsupported | {"cited_memory_ids": [evidence_id]}):
+        with patch("zathura.agents.skeptic.complete_json", return_value=unsupported | {
+            "cited_memory_ids": [evidence_id],
+            "rationale": f"Exact config was already tested in {evidence_id}; identical fixed examples add no information."}):
             grounded = review_hypothesis(hypothesis)
         self.assertEqual(grounded["decision"], "reject")
         self.assertEqual(grounded["prior_outcomes"][0]["measurements"], metrics)
@@ -248,6 +255,59 @@ class ResearchTests(unittest.TestCase):
         self.assertIn("detection_threshold 6.0 → 5.0", grounded["hypothesis"])
         self.assertNotIn("period grid", grounded["hypothesis"])
         self.assertEqual(grounded["prose_validation"]["discarded_stale_parameters"], ["period_grid_size"])
+
+    def test_fair_comparison_preserves_real_reasoning_and_ignores_legacy_rejections(self):
+        legacy = BASELINE_CONFIG.model_dump() | {"period_grid_size": 5000}
+        memory.write_memory("skeptic", {"proposed_config": legacy, "decision": "reject",
+            "concrete_problem": "unfair_comparison", "rationale": "Current proposal assessment: unfair_comparison.",
+            "changed_parameter": "period_grid_size", "direction": 1}, "critique")
+        memory.write_memory("research-scientist", {"proposed_config": legacy, "failed": True,
+            "decision": "reject", "measurements": {}}, "result")
+        hypothesis = research_hypothesis([], {})
+        self.assertEqual(hypothesis["proposed_config"].model_dump(), legacy)
+        self.assertEqual(hypothesis["memory_influence"]["memory_ids"], [])
+        rationale = "The period_grid_size change 2000 to 5000 has been bounded and uses the same fixed dev examples."
+        invalid_request_rejection = {"kind": "critique", "memory_id": "a" * 32, "content": {
+            "proposed_config": legacy, "decision": "reject", "review_policy_version": "grounded-review-v2",
+            "concrete_problem": "unfair_comparison", "blocking_facts": {"unfair_comparison": ["wrong dataset"]}}}
+        self.assertEqual(memory_conflicts(legacy, BASELINE_CONFIG.model_dump(), [invalid_request_rejection]), [])
+        response = {"decision": "approve", "rationale": rationale, "concerns": [], "requested_changes": [],
+                    "concrete_problem": "none", "cited_memory_ids": []}
+        with patch("zathura.agents.skeptic.complete_json", return_value=response) as client:
+            critique = review_hypothesis(hypothesis)
+        self.assertEqual(critique["rationale"], rationale)
+        self.assertEqual(critique["model_reviews"], [response])
+        payload = client.call_args.args[0]
+        self.assertTrue(payload["comparison_contract"]["fair_comparison"])
+        self.assertEqual(payload["blocking_facts"], {})
+        self.assertNotIn("recalled_memories", payload)
+        _, schema = llm._response_schema(payload, "skeptic")
+        properties = schema["json_schema"]["schema"]["properties"]
+        self.assertEqual(properties["concrete_problem"]["enum"], ["none"])
+        self.assertEqual(properties["cited_memory_ids"]["maxItems"], 0)
+        canned = response | {"decision": "reject", "concrete_problem": "unfair_comparison",
+                             "rationale": "Current proposal assessment: unfair_comparison."}
+        with patch("zathura.agents.skeptic.complete_json", side_effect=[canned, response]):
+            self.assertEqual(review_hypothesis(hypothesis)["rationale"], rationale)
+        with patch("zathura.agents.skeptic.complete_json", return_value=canned):
+            with self.assertRaisesRegex(ValueError, "after correction"):
+                review_hypothesis(hypothesis)
+
+    def test_specific_blocking_facts_and_sentence_level_grounding(self):
+        best = BASELINE_CONFIG.model_dump()
+        config = best | {"period_grid_size": 50000}
+        evidence = [{"memory_id": "a" * 32, "agent_id": "research-scientist", "content": {
+            "proposed_config": best, "measurements": {"runtime_s": 2.0}}}]
+        request = {"dataset_id": "dev", "action": "run_experiment"}
+        facts = _blocking_facts(config, best, request, evidence)
+        self.assertNotIn("unfair_comparison", facts)
+        self.assertEqual(facts["runtime"][0]["estimated_runtime_s"], 50.0)
+        self.assertIn("unfair_comparison", _blocking_facts(config | {"outlier_sigma": 4}, best, request, evidence))
+        self.assertIn("false_positive_risk", _blocking_facts(best | {"detection_threshold": 0}, best, request, []))
+        text = "Prior experiments failed in nonexistent. This bounded grid change uses identical examples."
+        self.assertEqual(_grounded_text(text, [], ["nonexistent"]), "This bounded grid change uses identical examples.")
+        supported = f"Prior results in {'a' * 32} show runtime of 2 seconds."
+        self.assertEqual(_grounded_text(supported, ['a' * 32]), supported)
 
     def test_unevidenced_model_memory_influence_is_discarded(self):
         memory_id = memory.write_memory("skeptic", "Shared-memory integration check.", "integration-check")

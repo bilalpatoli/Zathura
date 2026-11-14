@@ -31,8 +31,18 @@ SKEPTIC_PROMPT = (
     "Uncertain benefit, lack of prior validation, or a modest parameter change is NOT grounds for revision. "
     "Set concrete_problem=none unless there is an actionable current problem. "
     "Cite prior outcomes ONLY via cited_memory_ids from supplied outcome_evidence. "
-    "Do not write historical claims in rationale or concerns; the application renders cited outcomes. "
-    "If final_review is true, choose approve or reject, NEVER revise."
+    "Do not write unsupported historical claims in rationale or concerns. "
+    "If final_review is true, choose approve or reject, NEVER revise. "
+    "comparison_contract is computed by the integration: one bounded parameter, fixed dev examples, "
+    "same seed, and current-best reference make a FAIR comparison by construction. "
+    "Do NOT require simultaneous parameter changes, integration of past changes, independent samples per config, "
+    "per-depth metrics, or prior proof of improvement. APPROVE when blocking_facts is empty. "
+    "A failed DIFFERENT configuration is not a blocking problem. Only the supplied blocking_facts can justify "
+    "a non-none concrete_problem: exact measured duplicates on fixed data, invalid dev comparison, disabled cutoff, "
+    "or documented estimated runtime above the 30-second dev budget. "
+    "Give your own specific rationale naming the actual change and facts; never echo a generic assessment label. "
+    "Historical claims are permitted only with a supplied measured outcome id in each such sentence. "
+    "Unexecuted rejected proposals are NOT failed experiments."
 )
 
 
@@ -42,10 +52,12 @@ def _response_schema(payload, purpose):
     if purpose == "skeptic":
         decisions = ["approve", "reject"] if payload.get("final_review") else ["approve", "reject", "revise"]
         evidence_ids = [m["memory_id"] for m in payload.get("outcome_evidence", [])]
+        problems = ["none"] + list(payload.get("blocking_facts", {}))
         properties = {"decision": {"type": "string", "enum": decisions},
                       "rationale": string, "concerns": strings, "requested_changes": strings,
-                      "concrete_problem": {"type": "string", "enum": ["none", "unfair_comparison", "false_positive_risk", "runtime", "duplicate"]},
-                      "cited_memory_ids": {"type": "array", "items": {"type": "string", "enum": evidence_ids or [""]}}}
+                      "concrete_problem": {"type": "string", "enum": problems},
+                      "cited_memory_ids": {"type": "array", "items": {"type": "string", "enum": evidence_ids}} if evidence_ids
+                          else {"type": "array", "items": string, "maxItems": 0}}
     else:
         choices = [{"candidate_id": f"candidate-{i}", "config": config}
                    for i, config in enumerate(payload["candidate_configs"])]
@@ -71,6 +83,13 @@ def complete_json(payload, purpose="scientist"):
     key = os.getenv("OPENAI_API_KEY")
     if not key or os.getenv("ZATHURA_MOCK") == "1":
         if purpose == "skeptic":
+            facts = payload.get("blocking_facts", {})
+            if facts:
+                problem = next(iter(facts))
+                return {"decision": "reject", "rationale": f"[MOCK] {problem}: {json.dumps(facts[problem])}",
+                        "concerns": [], "requested_changes": ["Address the documented blocking fact."],
+                        "concrete_problem": problem,
+                        "cited_memory_ids": [m["memory_id"] for m in payload.get("outcome_evidence", [])]}
             return {"decision": "approve", "rationale": "[MOCK] Bounded single-parameter dev comparison is worth testing.",
                     "concerns": ["[MOCK] Monitor false alarms as well as recovery."], "requested_changes": [],
                     "concrete_problem": "none", "cited_memory_ids": []}

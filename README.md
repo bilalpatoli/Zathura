@@ -206,6 +206,18 @@ Cheap bounded untried experiments default to approval unless a concrete issue
 exists; uncertain benefits are left to the evaluator. Historical claims in free
 prose are dropped. Prior outcomes are rendered only from recalled measured-result
 entries identified by valid memory ids; unknown ids are discarded and reported.
+The `grounded-review-v2` policy verifies fairness from the actual config/request:
+a bounded single-parameter change on fixed dev examples is fair by construction.
+Only observable blocking facts (invalid comparison, exact measured duplicate,
+disabled cutoff, or a measured-runtime-based estimate above the 30-second dev
+budget) can justify a rejection category. Runtime extrapolations are labelled
+estimates, not measurements. Uncertain improvement or possible false positives
+alone are left to the evaluator. Model reasoning is retained in `model_reviews`;
+unsupported historical sentences are removed individually, and an empty,
+label-only, or policy-inconsistent response gets one corrective model call rather
+than a canned rationale or a silent decision override. Legacy ungrounded critiques
+and unexecuted rejected records cannot poison subsequent scientist decisions;
+actual measured negative results remain eligible for memory vetoes.
 Unapproved final proposals count
 as rejected, are logged with empty measurements, and never run. Approved proposals
 run/evaluate on dev, are stored, and their results enter shared memory. Acceptance

@@ -55,14 +55,21 @@ def memory_conflicts(config, best, memories):
         content = memory.get("content")
         if not isinstance(content, dict):
             continue
-        if not (content.get("failed") is True or content.get("decision") in ("reject", "revise")):
+        measured_failure = memory.get("kind") == "result" and bool(content.get("measurements")) and content.get("failed") is True
+        grounded_rejection = (memory.get("kind") == "critique"
+                              and content.get("review_policy_version") == "grounded-review-v2"
+                              and content.get("concrete_problem") in ("duplicate", "runtime", "false_positive_risk")
+                              and bool(content.get("blocking_facts"))
+                              and content.get("decision") in ("reject", "revise"))
+        if not (measured_failure or grounded_rejection):
             continue
         previous = content.get("proposed_config")
         if not isinstance(previous, dict):
             continue
         exact = config == previous
         field, direction = content.get("changed_parameter"), content.get("direction")
-        same_direction = field in changed and direction in (-1, 1) and (config[field] - best[field]) * direction > 0
+        same_direction = ((measured_failure or content.get("concrete_problem") == "runtime")
+                          and field in changed and direction in (-1, 1) and (config[field] - best[field]) * direction > 0)
         if exact or same_direction:
             conflicts.append(memory["memory_id"])
     return conflicts
@@ -123,11 +130,19 @@ def research_hypothesis(history, metrics):
             best = DetectionConfig.model_validate(winner["proposed_config"])
     best = best.model_dump()
     weakness = "recovery of shallow transits" if metrics.get("recovery_rate", 0) < 0.9 else "false-alarm rejection"
-    memories = recall_memory(AGENT, "failed rejected revise skeptic experiment results " + " ".join(best), k=12)
+    memories = recall_memory(AGENT, "failed rejected revise skeptic experiment results " + " ".join(best), k=200)
     memories = [m for m in memories if not isinstance(m.get("content"), dict)
                 or not m["content"].get("benchmark_version")
                 or m["content"]["benchmark_version"] == metrics.get("benchmark_version")]
     sources = search_papers(f"Kepler box least squares {weakness} detrending period grid", 3)
+    memories = [m for m in memories if isinstance(m.get("content"), dict) and (
+        (m.get("kind") == "result" and m["content"].get("measurements"))
+        or (m.get("kind") == "critique" and m["content"].get("review_policy_version") == "grounded-review-v2"
+            and m["content"].get("concrete_problem") != "unfair_comparison"))][:12]
+    memory_fields = ("proposed_config", "current_best_config", "decision", "rationale", "concerns", "measurements",
+                     "failed", "changed_parameter", "direction", "benchmark_version", "review_policy_version",
+                     "concrete_problem", "blocking_facts")
+    memories = [m | {"content": {k: m["content"][k] for k in memory_fields if k in m["content"]}} for m in memories]
     tried = [DetectionConfig.model_validate(r["proposed_config"]).model_dump() for r in history]
     candidates = []
     changes = {
