@@ -13,6 +13,16 @@ PASTDEV_MIRROR_PATH = Path(__file__).resolve().parents[2] / "data" / "pastdev-me
 AGENTS = {"research-scientist", "skeptic"}
 
 
+class RecalledMemories(list):
+    def __init__(self, entries, receipt):
+        super().__init__(entries)
+        self.receipt = receipt
+
+
+def recall_receipt(entries):
+    return getattr(entries, "receipt", {"read_via": "not_recorded", "returned_count": len(entries)})
+
+
 def _validate(agent_id, k=None):
     if agent_id not in AGENTS:
         raise ValueError(f"Unknown memory author/reader: {agent_id}")
@@ -60,7 +70,7 @@ class LocalBackend:
 class PastDevBackend:
     """Project-visible sources preserve authors via original-envelope metadata.
 
-    Configured-backend errors propagate rather than splitting shared history.
+    Write errors propagate; remote recall failures use the labelled audit mirror.
     """
     base_url = "https://api.past.dev/api/v1"
 
@@ -104,13 +114,15 @@ class PastDevBackend:
         return True
 
     def recall_memory(self, agent_id, query, k=5):
-        local = self.mirror.recall_memory(agent_id, query, k)
-        if local:
-            return [entry | {"read_via": "pastdev_mirror"} for entry in local]
-        remote = self.recall_remote(agent_id, query, k)
-        for entry in remote:
-            self.mirror.store(entry)
-        return remote
+        _validate(agent_id, k)
+        try:
+            remote = self.recall_remote(agent_id, query, k)
+            return RecalledMemories(remote, {"read_via": "pastdev_remote", "returned_count": len(remote)})
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            local = self.mirror.recall_memory(agent_id, query, k)
+            return RecalledMemories(
+                [entry | {"read_via": "pastdev_mirror", "fallback_reason": type(exc).__name__} for entry in local],
+                {"read_via": "pastdev_mirror", "returned_count": len(local), "fallback_reason": type(exc).__name__})
 
     def recall_remote(self, agent_id, query, k=5):
         """Explicit server-only recall for synchronization and integration checks."""
@@ -137,12 +149,18 @@ def write_memory(agent_id, content, kind, refs=None):
 
 
 def recall_memory(agent_id, query, k=5):
-    entries = get_backend().recall_memory(agent_id, query, k)
+    backend = get_backend()
+    entries = backend.recall_memory(agent_id, query, k)
     read_at = datetime.now(timezone.utc).isoformat()
-    return [entry | {"read_at": read_at} for entry in entries]
+    receipt = recall_receipt(entries)
+    if isinstance(backend, LocalBackend):
+        receipt = receipt | {"read_via": "local_jsonl"}
+    return RecalledMemories([entry | {"read_at": read_at} for entry in entries],
+                            receipt | {"read_at": read_at, "query": query})
 
 
 def memory_receipts(entries):
     return [{"memory_id": entry["memory_id"], "author": entry["agent_id"],
-             "read_via": entry.get("read_via", "not_recorded"), "read_at": entry.get("read_at")}
+             "read_via": entry.get("read_via", "not_recorded"), "read_at": entry.get("read_at"),
+             "fallback_reason": entry.get("fallback_reason")}
             for entry in entries]

@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from zathura.agents.exa_search import search_papers
 from zathura.agents.llm import complete_json
-from zathura.agents.memory import memory_receipts, recall_memory, write_memory
+from zathura.agents.memory import memory_receipts, recall_memory, recall_receipt, write_memory
 from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 AGENT = "research-scientist"
@@ -131,6 +131,7 @@ def research_hypothesis(history, metrics):
     best = best.model_dump()
     weakness = "recovery of shallow transits" if metrics.get("recovery_rate", 0) < 0.9 else "false-alarm rejection"
     memories = recall_memory(AGENT, "failed rejected revise skeptic experiment results " + " ".join(best), k=200)
+    memory_recall = recall_receipt(memories)
     memories = [m for m in memories if not isinstance(m.get("content"), dict)
                 or not m["content"].get("benchmark_version")
                 or m["content"]["benchmark_version"] == metrics.get("benchmark_version")]
@@ -194,6 +195,7 @@ def research_hypothesis(history, metrics):
     result["memory_influence"] = {"memory_ids": ids, "explanation": explanation}
     result["recalled_memory_ids"] = [m["memory_id"] for m in memories]
     result["memory_reads"] = memory_receipts(memories)
+    result["memory_recall"] = memory_recall
     result["literature_search"] = {"query": query,
         "call_location": "zathura/agents/exa_search.py:search_papers",
         "sources": [{k: source[k] for k in ("title", "url", "mock") if k in source} for source in sources]}

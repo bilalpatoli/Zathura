@@ -1,0 +1,259 @@
+{
+  "description": "Convenience validation examples, not tuning or holdout stars. Truth never used by vet_candidate.",
+  "planet_query": "select kepid, kepler_name, koi_period, koi_srad from cumulative where koi_disposition='CONFIRMED' and kepid in (4349452,5084942,5683743,6063220,6451936,6665695,8456679,8692861,8878187,10318874,10593626,10616679,10858832,10982872,11017901,11551692,11673802,11904151,12470954)",
+  "photometry": "MAST Kepler quality-masked long-cadence PDCSAP, preferred full quarter",
+  "eb_reference": "Kirk et al. 2016, Kepler Eclipsing Binary Stars VII, https://doi.org/10.3847/0004-6256/151/3/68",
+  "targets": [
+    {
+      "kepid": 4349452,
+      "name": "Kepler-25",
+      "truth": "planet",
+      "catalog_periods_days": [
+        12.720370263,
+        6.238535444
+      ],
+      "stellar_radius_solar": 1.258,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 5084942,
+      "name": "Kepler-475",
+      "truth": "planet",
+      "catalog_periods_days": [
+        3.105507835
+      ],
+      "stellar_radius_solar": 0.791,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 5683743,
+      "name": "Kepler-546",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.147021189
+      ],
+      "stellar_radius_solar": 1.205,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 6063220,
+      "name": "Kepler-99",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.603575293
+      ],
+      "stellar_radius_solar": 0.741,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 6451936,
+      "name": "Kepler-173",
+      "truth": "planet",
+      "catalog_periods_days": [
+        8.00579096,
+        4.26374378
+      ],
+      "stellar_radius_solar": 0.935,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 6665695,
+      "name": "Kepler-601",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.378868001
+      ],
+      "stellar_radius_solar": 0.774,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 8456679,
+      "name": "Kepler-1990",
+      "truth": "planet",
+      "catalog_periods_days": [
+        1.73513619,
+        4.06844957
+      ],
+      "stellar_radius_solar": 1.071,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 8692861,
+      "name": "Kepler-69",
+      "truth": "planet",
+      "catalog_periods_days": [
+        13.7223682,
+        242.467406
+      ],
+      "stellar_radius_solar": 0.943,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 8878187,
+      "name": "Kepler-650",
+      "truth": "planet",
+      "catalog_periods_days": [
+        3.032147946
+      ],
+      "stellar_radius_solar": 1.447,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10318874,
+      "name": "Kepler-94",
+      "truth": "planet",
+      "catalog_periods_days": [
+        2.508057497
+      ],
+      "stellar_radius_solar": 0.761,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10593626,
+      "name": "Kepler-22",
+      "truth": "planet",
+      "catalog_periods_days": [
+        289.864067
+      ],
+      "stellar_radius_solar": 0.886,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10616679,
+      "name": "Kepler-550",
+      "truth": "planet",
+      "catalog_periods_days": [
+        8.600099313
+      ],
+      "stellar_radius_solar": 0.805,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10858832,
+      "name": "Kepler-552",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.263415218
+      ],
+      "stellar_radius_solar": 1.028,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10982872,
+      "name": "Kepler-142",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.761705895,
+        2.024143568,
+        41.8085031
+      ],
+      "stellar_radius_solar": 1.225,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 11017901,
+      "name": "Kepler-447",
+      "truth": "planet",
+      "catalog_periods_days": [
+        7.794302043
+      ],
+      "stellar_radius_solar": 0.982,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 11551692,
+      "name": "Kepler-411",
+      "truth": "planet",
+      "catalog_periods_days": [
+        7.834433676,
+        3.005156911,
+        58.0198583
+      ],
+      "stellar_radius_solar": 0.72,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 11673802,
+      "name": "Kepler-1004",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.28790754
+      ],
+      "stellar_radius_solar": 3.818,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 11904151,
+      "name": "Kepler-10",
+      "truth": "planet",
+      "catalog_periods_days": [
+        0.837491225,
+        45.29422297
+      ],
+      "stellar_radius_solar": 1.044,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 12470954,
+      "name": "Kepler-554",
+      "truth": "planet",
+      "catalog_periods_days": [
+        1.902208647
+      ],
+      "stellar_radius_solar": 0.937,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad"
+    },
+    {
+      "kepid": 10661783,
+      "name": "KIC 10661783",
+      "truth": "EB",
+      "catalog_periods_days": [
+        1.2313633
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=10661783"
+    },
+    {
+      "kepid": 4851217,
+      "name": "KIC 4851217",
+      "truth": "EB",
+      "catalog_periods_days": [
+        2.47028
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=4851217"
+    },
+    {
+      "kepid": 4544587,
+      "name": "KIC 4544587",
+      "truth": "EB",
+      "catalog_periods_days": [
+        2.1890973
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=4544587"
+    }
+  ]
+}

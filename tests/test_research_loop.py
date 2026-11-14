@@ -72,10 +72,11 @@ class ResearchTests(unittest.TestCase):
             {"sources": [{"metadata": {"foreign": "source"}}]},
         ]}):
             self.assertEqual(backend.recall_remote("research-scientist", "failed"), [entry | {"read_via": "pastdev_remote"}])
-        with patch.object(backend, "_request", side_effect=AssertionError("mirror reads must not wait for network")):
+        with patch.object(backend, "_request", side_effect=TimeoutError("remote timed out")):
             recalled = backend.recall_memory("research-scientist", "failed")[0]
             self.assertEqual(recalled["memory_id"], memory_id)
             self.assertEqual(recalled["read_via"], "pastdev_mirror")
+            self.assertEqual(recalled["fallback_reason"], "TimeoutError")
         with patch.object(backend, "_request", side_effect=[
             {"status": "queued", "ingestionId": "ingestion"}, {"status": "failed"},
         ]), patch.object(memory.time, "sleep"):
@@ -88,14 +89,19 @@ class ResearchTests(unittest.TestCase):
         with patch.dict(os.environ, {"PASTDEV_API_KEY": "test-key"}):
             self.assertIsInstance(memory.get_backend(), memory.PastDevBackend)
 
-    def test_remote_bootstrap_then_mirror_preserves_read_provenance(self):
+    def test_remote_first_even_with_populated_mirror(self):
         backend = memory.PastDevBackend("test-key", self.root / "fresh-mirror.jsonl")
         entry = {"memory_id": "remote", "agent_id": "skeptic", "content": "context", "timestamp": "2026-01-01"}
         response = {"results": [{"sources": [{"metadata": {"zathura": entry}}]}]}
+        backend.mirror.store(entry)
         with patch.object(backend, "_request", return_value=response) as request:
             self.assertEqual(backend.recall_memory("research-scientist", "context")[0]["read_via"], "pastdev_remote")
-            self.assertEqual(backend.recall_memory("research-scientist", "context")[0]["read_via"], "pastdev_mirror")
-        self.assertEqual(request.call_count, 1)
+            self.assertEqual(backend.recall_memory("research-scientist", "context")[0]["read_via"], "pastdev_remote")
+        self.assertEqual(request.call_count, 2)
+        with patch.object(backend, "_request", return_value={"results": []}):
+            empty = backend.recall_memory("research-scientist", "context")
+            self.assertEqual(empty, [])
+            self.assertEqual(memory.recall_receipt(empty), {"read_via": "pastdev_remote", "returned_count": 0})
 
     def test_memory_changes_first_choice_deterministically(self):
         failed = BASELINE_CONFIG.model_dump() | {"period_grid_size": 5000}

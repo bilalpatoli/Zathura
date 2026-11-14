@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from zathura.agents.llm import complete_json
-from zathura.agents.memory import memory_receipts, recall_memory, write_memory
+from zathura.agents.memory import memory_receipts, recall_memory, recall_receipt, write_memory
 from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 REVIEW_POLICY_VERSION = "grounded-review-v2"
@@ -108,6 +108,7 @@ def review_hypothesis(hypothesis, final_review=False):
     else:
         raise ValueError("Skeptic did not produce a grounded, policy-consistent rationale after correction")
     critique = raw | {"rationale": rationale, "cited_memory_ids": cited, "memory_reads": reads,
+                      "memory_recall": recall_receipt(memories),
                       "dropped_memory_ids": [i for i in raw["cited_memory_ids"] if i not in by_id],
                       "model_reviews": attempts, "comparison_contract": contract,
                       "blocking_facts": facts, "review_policy_version": REVIEW_POLICY_VERSION,

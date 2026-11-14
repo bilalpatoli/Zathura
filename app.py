@@ -9,6 +9,7 @@ import streamlit as st
 from zathura.dashboard import Mission, snapshot
 from zathura.engine import inspect_target
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
+from zathura.story import render_story
 
 
 def badge(source):
@@ -60,7 +61,7 @@ def render_mission(state, worker):
     mock = os.getenv("ZATHURA_MOCK") == "1"
     services = [f"OpenAI: {'LIVE configured' if os.getenv('OPENAI_API_KEY') and not mock else 'MOCK'}",
                 f"Exa: {'LIVE configured' if os.getenv('EXA_API_KEY') and not mock else 'MOCK'}",
-                f"past.dev: {'LIVE writes / local mirror reads' if os.getenv('PASTDEV_API_KEY') else 'LOCAL JSONL (not past.dev)'}"]
+                f"past.dev: {'REMOTE-FIRST reads / live writes' if os.getenv('PASTDEV_API_KEY') else 'LOCAL JSONL (not past.dev)'}"]
     st.info(" · ".join(services))
     st.caption("Configured does not guarantee service availability. Historical mock output retains its MOCK labels.")
     records = state["current"]
@@ -225,7 +226,16 @@ def render_sponsors(state):
     with right:
         st.subheader("past.dev · shared intelligence")
         st.markdown("**Scientist** `research-scientist` ↔ **Skeptic** `skeptic`")
-        st.caption("Accepted writes hit past.dev. Context reads normally use its local mirror; remote recall is labelled separately. Local JSONL is not past.dev.")
+        st.caption("Accepted writes hit past.dev. Loop reads are remote-first; the mirror is used only after remote errors or timeouts. UI browsing reads the local audit mirror. Historical receipts retain their original transport labels.")
+        for event in state["latest"]:
+            payload = event.get("payload", {})
+            recall = payload.get("memory_recall") if isinstance(payload, dict) else None
+            if recall:
+                who = AGENT_NAMES.get(event.get("agent"), "Agent")
+                via = TRANSPORT_NAMES.get(recall.get("read_via"), "Not recorded")
+                st.caption(f"{who} · iteration {payload.get('iteration', '?')} · recall via {via} · {recall['returned_count']} returned before evidence filtering")
+                if recall.get("fallback_reason"):
+                    st.caption("Remote failure · " + recall["fallback_reason"])
         changes = [c["proposal"] for c in chains if c["proposal"].get("memory_influence", {}).get("memory_ids")]
         if not changes:
             st.info("No memory-driven decision change recorded for this mission.")
@@ -321,10 +331,10 @@ def render_results(state):
 
 
 def main():
-    st.set_page_config(page_title="Zathura · Mission Control", page_icon="✦", layout="wide")
+    st.set_page_config(page_title="Zathura · An autonomous AI astronomer", page_icon="✦", layout="wide")
     st.markdown("""<style>
     .stApp {background:radial-gradient(ellipse at top right,#17183c 0%,#060b18 65%);}
-    .block-container {padding-top:2rem;padding-bottom:2rem;}
+    .block-container {padding-top:4.5rem;padding-bottom:2rem;}
     h1,h2,h3 {letter-spacing:.025em;} h1 {color:#39dce8!important;}
     h2 {font-size:1.7rem!important;} h3 {font-size:1.2rem!important;}
     [data-testid="stMarkdownContainer"] p {overflow-wrap:anywhere;}
@@ -335,11 +345,37 @@ def main():
       border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
     [data-testid="stMetric"] {background:#10182dcc;border:1px solid #293554;border-radius:10px;padding:14px;}
     .stButton button[kind="primary"] {color:#060b18;font-weight:700;}
+    .chapter {margin-top:5rem;margin-bottom:1.5rem;max-width:900px;}
+    .chapter h2 {font-size:2.1rem!important;margin-top:.3rem;margin-bottom:.5rem;}
+    .chapter p {font-size:1.1rem;line-height:1.65;color:#d8e3f5;}
+    .eyebrow {font-size:.72rem;letter-spacing:.16em;color:#60e9e1;font-weight:700;}
+    .vocabulary {font-size:.8rem;color:#a997d9;margin:.5rem 0;line-height:1.5;}
+    .thought {background:linear-gradient(120deg,#14213a,#10182b);border:1px solid #293554;
+      border-left:3px solid;border-radius:14px;padding:1.4rem;margin-bottom:1rem;}
+    .thought p {font-size:1rem;line-height:1.75;color:#edf2ff;margin:.75rem 0 0;}
+    .big-result {font-size:3.3rem;font-weight:700;color:#60e9e1;margin-top:1.5rem;letter-spacing:.02em;}
+    .big-result span {color:#88749e;}
+    .verdict {font-size:1.8rem;font-weight:700;border:1px solid;border-radius:14px;
+      padding:1.2rem 1.6rem;margin:1.2rem 0;background:#10182d;}
+    .evidence-check {border-bottom:1px solid #27324a;padding:1.1rem 0;font-size:1rem;}
+    [data-testid="stSidebar"] {background:#0b1223;}
     </style>""", unsafe_allow_html=True)
-    st.title("ZATHURA")
-    st.caption("SEARCH THE STARS. QUESTION THE SIGNAL. REMEMBER THE SCIENCE.")
-    st.caption("Real Kepler photometry · synthetic transit injections for benchmarking · no new planet discoveries claimed. Historical placeholder and mock output stays labelled.")
-    live_dashboard()
+    under_the_hood = st.sidebar.toggle("Under the hood", value=False)
+    st.sidebar.caption("Open the engineering views, full provenance and sponsor evidence. The story is the default view.")
+    if under_the_hood:
+        st.title("ZATHURA · Under the hood")
+        st.caption("Real Kepler photometry · synthetic transit injections for benchmarking · historical mock output stays labelled.")
+        live_dashboard()
+    else:
+        live_story()
+
+
+@st.fragment(run_every=5)
+def live_story():
+    state = snapshot()
+    if state["warning"]:
+        st.warning(state["warning"])
+    render_story(state, mission())
 
 
 @st.fragment(run_every=5)
