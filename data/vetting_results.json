@@ -1,0 +1,1266 @@
+{
+  "config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 2000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+  },
+  "confusion": {
+    "planet": {
+      "Planet candidate": 15,
+      "Eclipsing binary": 3,
+      "Inconclusive / noise": 1
+    },
+    "EB": {
+      "Planet candidate": 0,
+      "Eclipsing binary": 3,
+      "Inconclusive / noise": 0
+    }
+  },
+  "targets": [
+    {
+      "kepid": 4349452,
+      "name": "Kepler-25",
+      "truth": "planet",
+      "catalog_periods_days": [
+        12.720370263,
+        6.238535444
+      ],
+      "stellar_radius_solar": 1.258,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.772681844546938,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 39.890096426858165,
+          "threshold": "difference < 3 sigma",
+          "passed": false,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1102729299399106,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.28443531488860857,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 6.362189688096753,
+      "sha256": "8da3400a05b6559226012229dff1301accb00874e83e121420c8fc4341fda2ec"
+    },
+    {
+      "kepid": 5084942,
+      "name": "Kepler-475",
+      "truth": "planet",
+      "catalog_periods_days": [
+        3.105507835
+      ],
+      "stellar_radius_solar": 0.791,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 26.18107295921115,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.7971412482174323,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 1.3506538599291067,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1110797878446295,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.21572261065211173,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 3.105966438781852,
+      "sha256": "af01e6597f949b85d2f7e71b1884a5b9cfdcf296590230590945b55744d84219"
+    },
+    {
+      "kepid": 5683743,
+      "name": "Kepler-546",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.147021189
+      ],
+      "stellar_radius_solar": 1.205,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 18.04209513467063,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.0607251852570636,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.315198312965277,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.3234992674603427,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.5920193547348388,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 4.150747508305647,
+      "sha256": "1938502435a08b64af11d85f780ea21e32bb74174c47b424802cca192bc5ce59"
+    },
+    {
+      "kepid": 6063220,
+      "name": "Kepler-99",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.603575293
+      ],
+      "stellar_radius_solar": 0.741,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 14.302355555011419,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.696377809674895,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.31337287025108224,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2350611953152963,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.13424960850803458,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 4.60705231620189,
+      "sha256": "31de99b0135aca8368edb56ab735ec1f2bb39cfe6f205c7a1542f5e5cadc76c5"
+    },
+    {
+      "kepid": 6451936,
+      "name": "Kepler-173",
+      "truth": "planet",
+      "catalog_periods_days": [
+        8.00579096,
+        4.26374378
+      ],
+      "stellar_radius_solar": 0.935,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 6.665192549542783,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.5057215266769425,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 0.9572337922075417,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.1598027730834438,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 9.487422876127194,
+      "sha256": "47102739aef557703fa46467b1e179630bf6b267db49c00a8ec1e2621f130697"
+    },
+    {
+      "kepid": 6665695,
+      "name": "Kepler-601",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.378868001
+      ],
+      "stellar_radius_solar": 0.774,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 23.150813290679906,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.401501911411889,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.6942386679733539,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.0461145032521404,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.15684225016588674,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 5.376546530392684,
+      "sha256": "997d6d4dfbffe05a8810d859424c75eebfc57559f73cff8b15de65ece9855ddf"
+    },
+    {
+      "kepid": 8456679,
+      "name": "Kepler-1990",
+      "truth": "planet",
+      "catalog_periods_days": [
+        1.73513619,
+        4.06844957
+      ],
+      "stellar_radius_solar": 1.071,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 22.647403770028248,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.971367723268756,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.5942839684691842,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1318420053723481,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.30224495843914573,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 1.7350924398923704,
+      "sha256": "ef16b26f7e57e3aa74c7f29e63d8d0ec5039f4e956c441e9345ea6f0471fdfd3"
+    },
+    {
+      "kepid": 8692861,
+      "name": "Kepler-69",
+      "truth": "planet",
+      "catalog_periods_days": [
+        13.7223682,
+        242.467406
+      ],
+      "stellar_radius_solar": 0.943,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 15.789227945980686,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 10.063764437597179,
+          "threshold": "difference < 3 sigma",
+          "passed": false,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2638247507255245,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.1557126423227572,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 6.852931093589303,
+      "sha256": "14312dba43dcb1cb7dc706cdd004b53e70cd9ca34f87fd99ecdb8305467fd44c"
+    },
+    {
+      "kepid": 8878187,
+      "name": "Kepler-650",
+      "truth": "planet",
+      "catalog_periods_days": [
+        3.032147946
+      ],
+      "stellar_radius_solar": 1.447,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.633579181228058,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.43800969881597046,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1740221211830206,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.2988075256225374,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 3.0338442859310972,
+      "sha256": "fe9b7c070b62dadafbd12f161887e62a25bedd8870febf1d5fab8f4f19c6bb5f"
+    },
+    {
+      "kepid": 10318874,
+      "name": "Kepler-94",
+      "truth": "planet",
+      "catalog_periods_days": [
+        2.508057497
+      ],
+      "stellar_radius_solar": 0.761,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 20.639360550926035,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.252234243269864,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.38755533531473657,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2618140565824585,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.21352686235682744,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 2.509415013808687,
+      "sha256": "8c2e847a316d771c59d8ffacc8b3a5d98041c304d98dfc4e517d0f74e43e15ee"
+    },
+    {
+      "kepid": 10593626,
+      "name": "Kepler-22",
+      "truth": "planet",
+      "catalog_periods_days": [
+        289.864067
+      ],
+      "stellar_radius_solar": 0.886,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Inconclusive / noise",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 5.906725743401652,
+          "threshold": "SDE \u2265 6",
+          "passed": false,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.10413654753517525,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.603198825246313,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1365278604908635,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.05451290226418612,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 4.295229909755049,
+      "sha256": "5e405ed4ea275d9bdb79dd19b5dc54cf6aed87fd1555913738c291801c08251c"
+    },
+    {
+      "kepid": 10616679,
+      "name": "Kepler-550",
+      "truth": "planet",
+      "catalog_periods_days": [
+        8.600099313
+      ],
+      "stellar_radius_solar": 0.805,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 18.178108130076986,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.7200076612114538,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 1.2863887988034692,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1926447474423882,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.35973952855838315,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 8.60525182953078,
+      "sha256": "c90e92176350b6a32f156b5aa99605c0150bd75d95c9d86b943a503f0f61eca3"
+    },
+    {
+      "kepid": 10858832,
+      "name": "Kepler-552",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.263415218
+      ],
+      "stellar_radius_solar": 1.028,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 12.029988028784505,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.07559265843721417,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.6098656507407244,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1984797434091488,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.27874921304584854,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 5.261911029218214,
+      "sha256": "be25998e1063ba3a87d0043677d2c23cb6e3465f4ac1a0e899b88adbf11efc53"
+    },
+    {
+      "kepid": 10982872,
+      "name": "Kepler-142",
+      "truth": "planet",
+      "catalog_periods_days": [
+        4.761705895,
+        2.024143568,
+        41.8085031
+      ],
+      "stellar_radius_solar": 1.225,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.883555126969775,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.22646364470835456,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 1.4541415510435374,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1890373582397662,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.24190244762870247,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 4.765196662693683,
+      "sha256": "1e4afc857f713adef6b912168df1bc69b145e62a488696e859e01324b7ce1a8c"
+    },
+    {
+      "kepid": 11017901,
+      "name": "Kepler-447",
+      "truth": "planet",
+      "catalog_periods_days": [
+        7.794302043
+      ],
+      "stellar_radius_solar": 0.982,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 6.547148725155139,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.8120384916147863,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 1.8992169414586202,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.0033661078402214,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.5063980671918973,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 6.769387064002709,
+      "sha256": "2032ea3527f1992e0e9b5abe8ef95cf3644f6ec9cf84dea41fb589486faafc8a"
+    },
+    {
+      "kepid": 11551692,
+      "name": "Kepler-411",
+      "truth": "planet",
+      "catalog_periods_days": [
+        7.834433676,
+        3.005156911,
+        58.0198583
+      ],
+      "stellar_radius_solar": 0.72,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 7.1291065758334184,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.5711959106760989,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.0111708847765604,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.33457337959269207,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 5.104698672114402,
+      "sha256": "b6c45a5c37d597922f0fd184dc304bfcf28213cc1f3c7482885ed3570ee70cb2"
+    },
+    {
+      "kepid": 11673802,
+      "name": "Kepler-1004",
+      "truth": "planet",
+      "catalog_periods_days": [
+        5.28790754
+      ],
+      "stellar_radius_solar": 3.818,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.861178489668465,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.6610950980240438,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.08455046334262,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.6213980496886109,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 5.286961121396456,
+      "sha256": "c6ececb6a5d803928c05928553e4e79573ac82e876f6062fb018ac5d0986614f"
+    },
+    {
+      "kepid": 11904151,
+      "name": "Kepler-10",
+      "truth": "planet",
+      "catalog_periods_days": [
+        0.837491225,
+        45.29422297
+      ],
+      "stellar_radius_solar": 1.044,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.676377986684315,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.7589448142023794,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 20.739104043898546,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": false,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1372239973602938,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.13092494685361858,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 1.6749057394218685,
+      "sha256": "116ae243ff41933194030e41b22fb081c63e51ab869edb3590f386c11ac4487c"
+    },
+    {
+      "kepid": 12470954,
+      "name": "Kepler-554",
+      "truth": "planet",
+      "catalog_periods_days": [
+        1.902208647
+      ],
+      "stellar_radius_solar": 0.937,
+      "source": "https://exoplanetarchive.ipac.caltech.edu/",
+      "radius_source": "NASA cumulative koi_srad",
+      "verdict": "Planet candidate",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 21.424621080866565,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.6511534829337788,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2086643901929988,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 0.39054475832391894,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": true,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; stellar radius is from the NASA catalog.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 1.901455341006373,
+      "sha256": "4fd3216ef814c3dfdb828fc7744b2c234c378732c860ff7eda2f9950c36d01aa"
+    },
+    {
+      "kepid": 10661783,
+      "name": "KIC 10661783",
+      "truth": "EB",
+      "catalog_periods_days": [
+        1.2313633
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=10661783",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 15.666605483011999,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 1.1250223139612845,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 80.9075454022583,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": false,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.1338498899436493,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 3.907122301758178,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": false,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; one solar stellar radius is assumed, not measured.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 1.2311387571595738,
+      "sha256": "fb6156ad197e0a0ab0db7b2c7b0a888b6cf91be7afcb7e6a613b3e10adf58105"
+    },
+    {
+      "kepid": 4851217,
+      "name": "KIC 4851217",
+      "truth": "EB",
+      "catalog_periods_days": [
+        2.47028
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=4851217",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 13.346967406954791,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 5.8725607873146375,
+          "threshold": "difference < 3 sigma",
+          "passed": false,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2527211342074214,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 3.5182214783216215,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": false,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; one solar stellar radius is assumed, not measured.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 1.2352468639930791,
+      "sha256": "8f810e1f929dc65127166442f3d031f8e0cd2f1e5e940cd4c4657f28382097b8"
+    },
+    {
+      "kepid": 4544587,
+      "name": "KIC 4544587",
+      "truth": "EB",
+      "catalog_periods_days": [
+        2.1890973
+      ],
+      "stellar_radius_solar": null,
+      "radius_source": "Solar-radius assumption (not measured)",
+      "source": "https://keplerebs.villanova.edu/overview/?k=4544587",
+      "verdict": "Eclipsing binary",
+      "tests": [
+        {
+          "name": "Detection strength",
+          "value": 16.520592200095503,
+          "threshold": "SDE \u2265 6",
+          "passed": true,
+          "explanation": "The strongest periodic dip must stand above the background of trial periods.",
+          "unit": "SDE"
+        },
+        {
+          "name": "Odd / even depths",
+          "value": 0.22726218572735332,
+          "threshold": "difference < 3 sigma",
+          "passed": true,
+          "explanation": "Alternating eclipse depths suggest two stars; at least two events in each group are required.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Secondary eclipse",
+          "value": 0.0,
+          "threshold": "dip at phase 0.5 < 5 sigma",
+          "passed": true,
+          "explanation": "A significant dip halfway around the orbit suggests a luminous companion.",
+          "unit": "sigma"
+        },
+        {
+          "name": "Transit shape",
+          "value": 1.2589670940498237,
+          "threshold": "central / mean depth \u2264 1.6",
+          "passed": true,
+          "explanation": "A strongly peaked V-shape is suspicious, but shape alone cannot establish a binary.",
+          "unit": "ratio"
+        },
+        {
+          "name": "Implied size",
+          "value": 5.678445358562131,
+          "threshold": "radius \u2264 2 Jupiter radii",
+          "passed": false,
+          "explanation": "Depth implies size only for an opaque, undiluted transit; one solar stellar radius is assumed, not measured.",
+          "unit": "Rj"
+        }
+      ],
+      "found_period_days": 2.188047285464098,
+      "sha256": "e8c74a144cf45d96e7de8b43aaa9fe6320e8e86c4547cadd675b7df8ddd6291a"
+    }
+  ],
+  "description": "Blind peak screening on selected known hosts and known binaries, not a held-out classifier benchmark."
+}

@@ -40,6 +40,8 @@ class ResearchTests(unittest.TestCase):
         recalled = memory.recall_memory("research-scientist", "failure", 1)
         self.assertEqual(recalled[0]["agent_id"], "skeptic")
         self.assertEqual(recalled[0]["memory_id"], first)
+        self.assertEqual(recalled[0]["read_via"], "local_jsonl")
+        self.assertIn("T", recalled[0]["read_at"])
         self.assertEqual(memory.recall_memory("skeptic", "", 1)[0]["memory_id"], second)
         for agent, k in (("unknown", 5), ("skeptic", 0), ("skeptic", True)):
             with self.assertRaises(ValueError):
@@ -69,9 +71,12 @@ class ResearchTests(unittest.TestCase):
             {"sources": [{"metadata": {"zathura": entry}}, {"metadata": {"zathura": entry}}]},
             {"sources": [{"metadata": {"foreign": "source"}}]},
         ]}):
-            self.assertEqual(backend.recall_remote("research-scientist", "failed"), [entry])
-        with patch.object(backend, "_request", side_effect=AssertionError("mirror reads must not wait for network")):
-            self.assertEqual(backend.recall_memory("research-scientist", "failed")[0]["memory_id"], memory_id)
+            self.assertEqual(backend.recall_remote("research-scientist", "failed"), [entry | {"read_via": "pastdev_remote"}])
+        with patch.object(backend, "_request", side_effect=TimeoutError("remote timed out")):
+            recalled = backend.recall_memory("research-scientist", "failed")[0]
+            self.assertEqual(recalled["memory_id"], memory_id)
+            self.assertEqual(recalled["read_via"], "pastdev_mirror")
+            self.assertEqual(recalled["fallback_reason"], "TimeoutError")
         with patch.object(backend, "_request", side_effect=[
             {"status": "queued", "ingestionId": "ingestion"}, {"status": "failed"},
         ]), patch.object(memory.time, "sleep"):
@@ -84,6 +89,20 @@ class ResearchTests(unittest.TestCase):
         with patch.dict(os.environ, {"PASTDEV_API_KEY": "test-key"}):
             self.assertIsInstance(memory.get_backend(), memory.PastDevBackend)
 
+    def test_remote_first_even_with_populated_mirror(self):
+        backend = memory.PastDevBackend("test-key", self.root / "fresh-mirror.jsonl")
+        entry = {"memory_id": "remote", "agent_id": "skeptic", "content": "context", "timestamp": "2026-01-01"}
+        response = {"results": [{"sources": [{"metadata": {"zathura": entry}}]}]}
+        backend.mirror.store(entry)
+        with patch.object(backend, "_request", return_value=response) as request:
+            self.assertEqual(backend.recall_memory("research-scientist", "context")[0]["read_via"], "pastdev_remote")
+            self.assertEqual(backend.recall_memory("research-scientist", "context")[0]["read_via"], "pastdev_remote")
+        self.assertEqual(request.call_count, 2)
+        with patch.object(backend, "_request", return_value={"results": []}):
+            empty = backend.recall_memory("research-scientist", "context")
+            self.assertEqual(empty, [])
+            self.assertEqual(memory.recall_receipt(empty), {"read_via": "pastdev_remote", "returned_count": 0})
+
     def test_memory_changes_first_choice_deterministically(self):
         failed = BASELINE_CONFIG.model_dump() | {"period_grid_size": 5000}
         memory_id = memory.write_memory("research-scientist", {
@@ -95,6 +114,12 @@ class ResearchTests(unittest.TestCase):
         self.assertNotEqual(hypothesis["proposed_config"].period_grid_size, 5000)
         self.assertIn(memory_id, hypothesis["memory_influence"]["memory_ids"])
         self.assertIn("Deterministic memory veto", hypothesis["memory_influence"]["explanation"])
+        self.assertEqual(hypothesis["memory_reads"][0]["memory_id"], memory_id)
+        self.assertEqual(hypothesis["memory_reads"][0]["author"], "research-scientist")
+        search = hypothesis["literature_search"]
+        self.assertIn("Kepler box least squares", search["query"])
+        self.assertEqual(search["call_location"], "zathura/agents/exa_search.py:search_papers")
+        self.assertTrue(all(s["mock"] and "snippet" not in s for s in search["sources"]))
         change = hypothesis["parameter_change"]
         self.assertIn(f"{change['field']} {change['old']} → {change['new']}", hypothesis["hypothesis"])
         self.assertNotIn("2000 → 5000", hypothesis["hypothesis"])
@@ -105,12 +130,15 @@ class ResearchTests(unittest.TestCase):
         hypothesis = research_hypothesis([], {})
         approved = review_hypothesis(hypothesis)
         self.assertEqual(approved["decision"], "approve")
-        memory.write_memory("research-scientist", {
+        self.assertEqual(approved["memory_reads"], [])
+        result_id = memory.write_memory("research-scientist", {
             "proposed_config": hypothesis["proposed_config"].model_dump(), "failed": True,
             "measurements": {"balanced_accuracy": 0.4},
         }, "result")
         rejected = review_hypothesis(hypothesis)
         self.assertEqual(rejected["decision"], "reject")
+        self.assertEqual(rejected["memory_reads"][0]["memory_id"], result_id)
+        self.assertEqual(rejected["memory_reads"][0]["read_via"], "local_jsonl")
         self.assertTrue(any(m["agent_id"] == "skeptic" for m in memory.recall_memory("research-scientist", "", 10)))
         with patch("zathura.agents.skeptic.complete_json", return_value={"decision": "invalid"}):
             with self.assertRaises(ValueError):
@@ -292,6 +320,26 @@ class ResearchTests(unittest.TestCase):
         with patch("zathura.agents.skeptic.complete_json", return_value=canned):
             with self.assertRaisesRegex(ValueError, "after correction"):
                 review_hypothesis(hypothesis)
+
+    def test_current_best_runtime_gates_first_proposal_without_memory(self):
+        best = BASELINE_CONFIG.model_dump()
+        request = {"dataset_id": "dev", "action": "run_experiment"}
+        config = best | {"period_grid_size": 50000}
+        response = {"decision": "reject", "rationale": "The current baseline implies a 50-second grid search, above the 30-second budget.",
+                    "concerns": [], "requested_changes": [], "concrete_problem": "runtime", "cited_memory_ids": []}
+        with patch("zathura.agents.skeptic.recall_memory", return_value=[]), \
+             patch("zathura.agents.skeptic.complete_json", return_value=response) as client:
+            review = review_hypothesis({"proposed_config": config, "current_best_config": best,
+                "experiment_request": request, "context_metrics": {"runtime_s": 2.0}})
+        self.assertEqual(review["decision"], "reject")
+        fact = client.call_args.args[0]["blocking_facts"]["runtime"][0]
+        self.assertEqual(fact["source"], "current_best")
+        self.assertEqual(fact["estimated_runtime_s"], 50.0)
+        self.assertNotIn("memory_id", fact)
+        for metrics in (None, {}, {"runtime_s": 0}):
+            self.assertNotIn("runtime", _blocking_facts(config, best, request, [], metrics))
+        self.assertNotIn("runtime", _blocking_facts(best | {"period_grid_size": 5000}, best, request, [], {"runtime_s": 2.0}))
+        self.assertNotIn("runtime", _blocking_facts(best | {"detrend_window": 101}, best, request, [], {"runtime_s": 2.0}))
 
     def test_specific_blocking_facts_and_sentence_level_grounding(self):
         best = BASELINE_CONFIG.model_dump()

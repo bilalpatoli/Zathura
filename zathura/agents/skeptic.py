@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from zathura.agents.llm import complete_json
-from zathura.agents.memory import recall_memory, write_memory
+from zathura.agents.memory import memory_receipts, recall_memory, recall_receipt, write_memory
 from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 REVIEW_POLICY_VERSION = "grounded-review-v2"
@@ -36,7 +36,7 @@ def _grounded_text(text, cited, unknown=()):
     return " ".join(kept)
 
 
-def _blocking_facts(config, best, request, evidence):
+def _blocking_facts(config, best, request, evidence, context_metrics=None):
     facts = {}
     changed = [k for k in best if config[k] != best[k]]
     if len(changed) != 1 or request != {"dataset_id": "dev", "action": "run_experiment"}:
@@ -47,13 +47,18 @@ def _blocking_facts(config, best, request, evidence):
     if config["detection_threshold"] <= 0:
         facts["false_positive_risk"] = [{"detection_threshold": config["detection_threshold"],
                                          "reason": "Nonpositive SDE cutoff disables meaningful peak rejection."}]
-    for memory in evidence:
+    timing_evidence = list(evidence)
+    if context_metrics:
+        timing_evidence.append({"source": "current_best", "content": {
+            "proposed_config": best, "measurements": context_metrics}})
+    for memory in timing_evidence:
         previous = memory["content"].get("proposed_config", {})
         runtime = memory["content"]["measurements"].get("runtime_s")
         if runtime and previous.get("period_grid_size") and all(config[k] == previous.get(k) for k in config if k != "period_grid_size"):
             estimate = runtime * config["period_grid_size"] / previous["period_grid_size"]
             if estimate > 30:
-                facts.setdefault("runtime", []).append({"memory_id": memory["memory_id"],
+                source = {"memory_id": memory["memory_id"]} if "memory_id" in memory else {"source": memory["source"]}
+                facts.setdefault("runtime", []).append({**source,
                     "measured_runtime_s": runtime, "estimated_runtime_s": estimate,
                     "reason": "Linear period-grid cost estimate exceeds the 30-second dev budget; not a measured candidate runtime."})
     return facts
@@ -66,10 +71,12 @@ def review_hypothesis(hypothesis, final_review=False):
     evidence = [m for m in memories if m.get("kind") == "result" and isinstance(m.get("content"), dict)
                 and m["content"].get("measurements")
                 and m["content"].get("benchmark_version") == hypothesis.get("benchmark_version")]
+    reads = memory_receipts(evidence)
     evidence = [{"memory_id": m["memory_id"], "agent_id": m["agent_id"], "kind": "result",
                  "content": {k: m["content"][k] for k in ("proposed_config", "measurements", "benchmark_version") if k in m["content"]}}
                 for m in evidence]
-    facts = _blocking_facts(config, best, hypothesis.get("experiment_request"), evidence)
+    facts = _blocking_facts(config, best, hypothesis.get("experiment_request"), evidence,
+                            hypothesis.get("context_metrics"))
     changed = [k for k in best if config[k] != best[k]]
     contract = {"changed_parameters": changed, "bounded_config": True,
                 "fixed_dev_examples_and_seed": True, "fair_comparison": "unfair_comparison" not in facts}
@@ -100,7 +107,8 @@ def review_hypothesis(hypothesis, final_review=False):
         )
     else:
         raise ValueError("Skeptic did not produce a grounded, policy-consistent rationale after correction")
-    critique = raw | {"rationale": rationale, "cited_memory_ids": cited,
+    critique = raw | {"rationale": rationale, "cited_memory_ids": cited, "memory_reads": reads,
+                      "memory_recall": recall_receipt(memories),
                       "dropped_memory_ids": [i for i in raw["cited_memory_ids"] if i not in by_id],
                       "model_reviews": attempts, "comparison_contract": contract,
                       "blocking_facts": facts, "review_policy_version": REVIEW_POLICY_VERSION,

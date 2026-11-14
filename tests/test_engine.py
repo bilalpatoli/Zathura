@@ -138,6 +138,14 @@ class EngineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             engine.evaluate_experiment(holdout_id)
 
+    def test_short_curve_diagnostic(self):
+        curve = engine.get_lightcurve("KIC 7")
+        for count in (0, 2, 9):
+            with self.subTest(count=count), patch.object(engine, "get_lightcurve", return_value=curve | {
+                    "time": curve["time"][:count], "flux": curve["flux"][:count]}):
+                with self.assertRaisesRegex(ValueError, "Insufficient finite"):
+                    engine.inspect_target("KIC 7")
+
     def test_known_planet_validation_and_targets(self):
         report = engine.validate_known_planets()
         self.assertEqual((report["recovered"], report["total"]), (1, 1))

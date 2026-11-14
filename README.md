@@ -13,14 +13,19 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open http://localhost:8501. The sidebar pages are Mission Control, Planet Detection,
-AI Research Timeline, and Experimental Results. Theme settings live in
-`.streamlit/config.toml` (Noto Sans from Google Fonts, falling back to the system sans-serif);
-page styling and the logo live in `assets/`. No API credentials are needed
+Open http://localhost:8501. The default is the single-page **Zathura: An autonomous
+AI astronomer** story: The Signal, The Shadow, The Scientist Thinks, The Skeptic
+Pushes Back, It Remembers, and Planet or Impostor? **Begin Mission** runs the live
+research loop. The sidebar also opens Mission Control, Planet Detection,
+AI Research Timeline, Experimental Results, and Sponsor Evidence. These engineering
+pages use the redesigned cards, navigation, and live mission-status bar.
+Theme settings live in `.streamlit/config.toml` (Noto Sans from Google Fonts,
+falling back to the system sans-serif); page styling and the logo live in `assets/`.
+No API credentials are needed
 to browse existing results. Missing data produces empty states without automatic
 NASA or agent calls; the committed cache needs no network access.
 
-Launch Research Mission starts a daemon background worker. A two-second Streamlit
+Begin Mission (or Launch Research Mission on Mission Control) starts a daemon background worker. A five-second Streamlit
 fragment refreshes the timeline and results; worker callbacks never call Streamlit.
 Only one mission can run per dashboard process, including across browser sessions.
 Closing the browser does not stop it, but stopping/restarting Streamlit does.
@@ -28,10 +33,16 @@ Do not concurrently run a CLI mission: JSONL storage has no cross-process locks.
 Launching can incur API charges when live credentials are configured. Backend
 indicators show configuration, not verified uptime; historical mock output remains
 labelled. A failed mission displays only its error type, not transport secrets.
+When the latest mission has no verified memory veto, the memory chapter explicitly
+labels the most recent historical example and preserves its original read source.
 
 ### Architecture and data flow
 
-- `app.py`: four `render_*` functions, Plotly presentation and a polling fragment.
+- `app.py`: six sidebar pages, Plotly presentation and a polling fragment.
+- `zathura/story.py`: read-only narrative, raw source-cadence counts, vetting plots
+  and same-mission scorecards. It never reads benchmark injection labels.
+- `zathura/engine/vetting.py`: five-test screening of un-injected real sources.
+- `zathura/evidence.py`: read-only search-chain and chronological memory projections.
 - `zathura/dashboard.py`: read-only snapshots from storage, events, memory mirror
   and held-out results; `Mission.launch` owns the background thread.
 - `zathura/engine/__init__.py`: `cached_targets` reads available source metadata
@@ -47,11 +58,26 @@ labelled. A failed mission displays only its error type, not transport secrets.
 - **past.dev identities:** `research-scientist` writes hypotheses and measured
   results; `skeptic` writes critiques. Both recall project-visible entries written
   by either author. With `PASTDEV_API_KEY`, writes hit Past.dev ingestion first and
-  are mirrored to `data/pastdev-memory.jsonl` after acceptance. Loop/UI reads use
-  that mirror to avoid indexing latency; explicit `recall_remote` and
-  `scripts/check_memory.py` verify server-only exchange. Without a key,
+  are mirrored to `data/pastdev-memory.jsonl` after acceptance. **Loop reads are
+  remote-first**, with the local mirror used only after a remote error or timeout.
+  Empty successful recalls stay empty: indexing delay is not grounds for silently
+  substituting the mirror. UI snapshots browse the mirror, without agent/network
+  calls. `scripts/check_memory.py` verifies server-only exchange. Without a key,
   `data/memory.jsonl` is the local backend, not a simulated Past.dev service.
-  The exchange view shows the most recent 200 author-attributed entries.
+  The snapshot reads the most recent 200 author-attributed entries.
+
+Sponsor Evidence shows the latest mission's exact Exa queries, returned source links,
+canonical Scientist citations, final parameter changes and measured outcomes. It
+also shows memory writes and context reads with ids, authors, timestamps and access
+transport (remote past.dev, its local mirror, or local-only JSONL). A read receipt
+means the memory was supplied as agent context, not that every entry affected the
+decision. Deterministic veto cards show the first-choice and replacement configs.
+The optional `literature_search`, `memory_reads` and `memory_recall` event fields are additive;
+legacy records without them explicitly say provenance was not recorded. The UI
+never infers a remote read from a configured key or from a successful remote write.
+`memory_recall` records successful remote recalls even when zero entries are
+returned or all are filtered out; `memory_reads` lists only context actually
+supplied to the agent. Recall transport does not imply memory changed a decision.
 
 ### Methodology and limitations
 
@@ -72,7 +98,8 @@ Dashboard baseline/best comparisons and charts use only the latest mission to
 avoid mixing benchmark versions. Rejections have missing metrics, not zero scores.
 Acceptance means strictly improved dev balanced accuracy, not just reviewer
 approval. The separate held-out panel shows the latest completed holdout and its
-loop ID; during a new mission it may still belong to the previous mission. Agents
+loop ID; during a new mission it may still belong to the previous mission. The
+story instead waits for the current mission's holdout result. Agents
 never receive holdout results. The Python API boundary is not a security sandbox.
 Historical LLM-reported memory influence without deterministic veto evidence is
 marked UNVERIFIED, not presented as proof that memory changed a decision.
@@ -123,7 +150,7 @@ quality-masked long-cadence PDCSAP quarter per star from MAST (`data/catalog.jso
 `data/cache/kic_*.npz`, ~4 MB, committed):
 
 - 40 dev and 40 holdout benchmark stars, disjoint: quiet FGK dwarfs (Teff
-  4800-6500 K, log g > 4, Kp 11-14.5) with no KOI or TCE.
+  5000-6500 K, log g > 4.2, Kp 11.5-13.5) with no KOI or TCE.
 - 16 validation stars hosting confirmed planets with 1-10 day periods, spread in
   catalog SNR. These never enter the benchmark.
 
@@ -181,15 +208,104 @@ Real Past.dev docs were found at <https://past.dev/mcp> and
 REST ingestion and recall with source metadata
 preserving the original author and envelope. Entries are project-visible so both
 agents share them. Use a dedicated Zathura project key in `PASTDEV_API_KEY` (the
-vendor examples call this `PAST_API_KEY`). Configured-backend errors propagate;
+vendor examples call this `PAST_API_KEY`). Remote write errors propagate;
 there is no silent write fallback. When set, this key always selects Past.dev.
 Every successful remote ingest is immediately mirrored to `data/pastdev-memory.jsonl`.
-Loop reads use that separate mirror, so queued ingestion and remote recall latency
-do not block research. Empty mirrors bootstrap with remote recall; use
-`recall_remote` for explicit synchronization and server-only evidence, and
+Loop reads call remote recall first (15-second HTTP timeout). Transport, HTTP or
+malformed-response errors fall back to the mirror, labelled `pastdev_mirror` with
+`fallback_reason`; successful reads are `pastdev_remote`. A successful empty
+response does not use the mirror. Remote indexing can therefore temporarily hide
+recent writes. Write errors still propagate. Use `recall_remote` for server-only evidence, and
 `wait_until_ready` for bounded ingestion polling outside the loop.
 Run `.venv/bin/python scripts/check_memory.py` to verify server-only recall in
 both author/reader directions (requires a real key).
+
+## Planet or Impostor? Real-source screening
+
+`zathura.engine.vetting.vet_candidate(target_id, config=None)` accepts a cached
+`KIC …` identifier and returns a verdict, summary (not an invented probability),
+five test records, stellar-radius provenance, and chart arrays. Every test has a
+value, threshold, `passed` (`true`, `false`, or `null` for insufficient evidence),
+unit and plain-English explanation. Invalid identifiers, non-real sources, or
+insufficient finite samples raise `ValueError`; missing cache files are errors,
+never synthetic replacements. Defaults are the unchanged detector baseline.
+
+The **blind 1–10 day BLS peak** is screened; catalog truth and periods do not select
+the signal or alter the verdict:
+
+1. BLS SDE must meet the configured detection threshold; weak signals are
+   **Inconclusive / noise**, regardless of other flags.
+2. Compare per-event odd/even mean depths against local out-of-transit windows.
+   Their difference must be below **3 sigma** (at least two events per group).
+3. Search for a secondary at **phase 0.5**, with the primary duration. Its depth
+   must be below **5 sigma**. Depth errors use the larger of per-event scatter
+   and a robust point-scatter floor; these are approximate significances.
+4. A central-third / mean in-transit depth ratio above **1.6** is a V-shape warning.
+   Ideal boxes give roughly 1, triangles roughly 1.67; limb darkening, cadence
+   smearing and grazing geometry blur this distinction.
+5. `sqrt(depth) × stellar_radius` must be at most **2 Jupiter radii**, using NASA
+   `koi_srad` when available. The three EB examples use an explicitly labelled
+   **one-solar-radius assumption**, not a measured radius.
+
+For a detected signal, failing odd/even, secondary or size produces **Eclipsing
+binary**; only all five passing produces **Planet candidate**. Missing evidence
+or shape-only warnings produce **Inconclusive / noise**. This is transparent
+screening, **not confirmation or a calibrated classifier**. Single-band data
+cannot test color dependence. Red noise, dilution, uncertain stellar radii,
+grazing planets, period aliases, multi-planet hosts and eccentric secondaries
+away from phase 0.5 can defeat these tests. The short blind search cannot recover
+the catalogued long-period planets in Kepler-22 or Kepler-69; Kepler-10's principal
+planet is below its one-day lower bound. A verdict labels the found peak, not all
+objects in a host system.
+
+Reproduce the offline report:
+
+```sh
+.venv/bin/python scripts/validate_vetting.py
+```
+
+To rebuild real MAST photometry and NASA metadata (requires network):
+
+```sh
+.venv/bin/python scripts/build_vetting.py
+```
+
+The cache follows the existing Lightkurve downloader: Kepler long-cadence,
+quality-masked, normalized **PDCSAP**, one preferred full quarter per star.
+`data/vetting_catalog.json` records classifications, reference periods, stellar
+radii and citations; `data/vetting_results.json` records the exact baseline config,
+all per-target test values, found periods and cache SHA256 hashes. This separate
+convenience set does not modify tuning examples or dev/holdout membership.
+
+### Confusion matrix (selected real sources, not held-out classifier validation)
+
+| Catalog truth | Planet candidate | Eclipsing binary | Inconclusive / noise |
+|---|---:|---:|---:|
+| Planet hosts (19) | 15 | 3 | 1 |
+| Eclipsing binaries (3) | 0 | 3 | 0 |
+
+**Failures are retained:** Kepler-25 and Kepler-69 are falsely flagged by odd/even
+depths; Kepler-10 by a secondary at the detected alias; Kepler-22 is below the
+detection threshold. Those are not discoveries or revisions of catalog truth.
+The story shows this same matrix as a labelled count heatmap (no story tables).
+No population-wide accuracy or calibrated confidence follows from 22 selected
+systems. The default planet example is Kepler-601; all 16 pre-existing validation
+hosts plus Kepler-10, -22 and -69 are included.
+
+### Eclipsing-binary sources
+
+- [Villanova: KIC 10661783](https://keplerebs.villanova.edu/overview/?k=10661783),
+  catalog period 1.2313633 d; also
+  [Southworth et al. 2011](https://ui.adsabs.harvard.edu/abs/2011MNRAS.414.2413S/abstract).
+- [Villanova: KIC 4851217](https://keplerebs.villanova.edu/overview/?k=4851217),
+  catalog period 2.4702800 d.
+- [Villanova: KIC 4544587](https://keplerebs.villanova.edu/overview/?k=4544587),
+  catalog period 2.1890973 d.
+- Catalog reference: [Kirk et al. 2016, AJ 151, 68](https://doi.org/10.3847/0004-6256/151/3/68).
+
+The UI calls these Binary A/B/C only as demo labels; source links expose their
+real catalog identities. The displayed ppm scatter is a robust point-to-point
+estimate (`1.4826 × MAD(diff(flux)) / sqrt(2)`), not a red-noise precision guarantee.
 
 The scientist recalls shared critiques/results before proposing and writes each
 hypothesis back. Citations are canonicalized by supplied URL rather than exact
