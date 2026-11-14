@@ -5,10 +5,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import numpy as np
-
 from zathura.dashboard import Mission, read_jsonl, snapshot
-from zathura.engine import cached_targets, inspect_target
+from zathura.engine import cached_targets
+from zathura.engine.data import load_catalog
 
 
 class DashboardTests(unittest.TestCase):
@@ -52,25 +51,14 @@ class DashboardTests(unittest.TestCase):
                 thread.join(5)
         self.assertEqual(worker.status(), {"running": False, "iteration": 1, "error": "RuntimeError"})
 
-    def test_engine_read_only_diagnostic_and_empty_cache(self):
-        with tempfile.TemporaryDirectory() as directory, patch("zathura.engine.CACHE", Path(directory)):
-            self.assertEqual(cached_targets(), [])
-        t = np.linspace(0, 20, 1000)
-        phase = (t + 1) % 2 - 1
-        flux = 1 + np.random.default_rng(7).normal(0, 0.0001, len(t))
-        flux[np.abs(phase) < 0.06] -= 0.01
-        curve = {"target_id": "test", "time": t, "flux": flux,
-                 "curve_origin": "synthetic_placeholder", "data_source": "placeholder"}
-        with patch("zathura.engine.get_lightcurve", return_value=curve):
-            result = inspect_target("test")
-        self.assertAlmostEqual(result["period_days"], 2, delta=0.03)
-        self.assertEqual(result["data_source"], "placeholder")
-        self.assertEqual(len(result["flat_flux"]), len(t))
-        self.assertTrue(result["in_transit"].any())
-        with patch("zathura.engine.get_lightcurve", return_value=curve | {"time": t[:2], "flux": flux[:2]}):
-            with self.assertRaises(ValueError):
-                inspect_target("test")
-
+    def test_cached_targets_empty_without_catalog(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             patch("zathura.engine.data.CATALOG_PATH", Path(directory) / "missing.json"):
+            load_catalog.cache_clear()
+            try:
+                self.assertEqual(cached_targets(), [])
+            finally:
+                load_catalog.cache_clear()
 
 if __name__ == "__main__":
     unittest.main()

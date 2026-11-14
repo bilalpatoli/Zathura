@@ -1,0 +1,1 @@
+{"detrend_window": 101, "outlier_sigma": 5.0, "period_grid_size": 10000, "detection_threshold": 9.0, "duration_min_days": 0.04, "duration_max_days": 0.3}

@@ -41,6 +41,13 @@ class EvaluationResult(BaseModel):
     improved_vs_baseline: bool
     improved_vs_best: bool
     delta: float
+    delta_vs_best: float | None = None
+    delta_vs_baseline_ci_low: float | None = None
+    delta_vs_baseline_ci_high: float | None = None
+    significant_vs_baseline: bool | None = None
+    delta_vs_best_ci_low: float | None = None
+    delta_vs_best_ci_high: float | None = None
+    significant_vs_best: bool | None = None
 
 
 class ExperimentRecord(BaseModel):

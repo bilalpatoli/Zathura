@@ -1,0 +1,495 @@
+{
+ "benchmark_version": "kepler-injection-v4",
+ "configs": {
+  "baseline": {
+   "config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 2000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "dev": {
+    "measurements": {
+     "recovery_rate": 0.39375,
+     "false_alarm_rate": 0.475,
+     "balanced_accuracy": 0.45937500000000003,
+     "balanced_accuracy_ci_low": 0.3375,
+     "balanced_accuracy_ci_high": 0.571875,
+     "harmonic_rate": 0.0375,
+     "positive_count": 160.0,
+     "negative_count": 40.0,
+     "recovery_snr_5_8": 0.12,
+     "recovery_snr_8_12": 0.34210526315789475,
+     "recovery_snr_12_18": 0.6341463414634146,
+     "recovery_snr_18_25": 0.5806451612903226
+    },
+    "runtime_s": 3.1794261909999477,
+    "truth_sha256": "1bc9194b06bd3477c3677bd0dca48e4b8c8b515070c824ba9f61f6254457292c",
+    "curves_sha256": "23aa090420ec42071a03b2e970c8b8e515f367e5814fadd56d93f2abd0a7a838",
+    "run_id": "5c3a9a396583423d92b806f82bd084dc"
+   },
+   "holdout": {
+    "measurements": {
+     "recovery_rate": 0.31875,
+     "false_alarm_rate": 0.55,
+     "balanced_accuracy": 0.384375,
+     "balanced_accuracy_ci_low": 0.271796875,
+     "balanced_accuracy_ci_high": 0.5,
+     "harmonic_rate": 0.03125,
+     "positive_count": 160.0,
+     "negative_count": 40.0,
+     "recovery_snr_5_8": 0.0,
+     "recovery_snr_8_12": 0.19047619047619047,
+     "recovery_snr_12_18": 0.5714285714285714,
+     "recovery_snr_18_25": 0.5757575757575758
+    },
+    "runtime_s": 2.885431411000127,
+    "truth_sha256": "38631a51e3ab07c6f010d298c68bb8ac9d14d9b5be7e2ef367a4f4dcc6b8cef7",
+    "curves_sha256": "486df4ba2b4e339ce0df084cd3f5fe5cb1666252ca52e25def44c5d4d5fb5074",
+    "run_id": "d26680cb071842d096f3d128caa55abb"
+   },
+   "deterministic": true
+  },
+  "candidate": {
+   "config": {
+    "detrend_window": 101,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 10000,
+    "detection_threshold": 9.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "dev": {
+    "measurements": {
+     "recovery_rate": 0.4625,
+     "false_alarm_rate": 0.025,
+     "balanced_accuracy": 0.71875,
+     "balanced_accuracy_ci_low": 0.665625,
+     "balanced_accuracy_ci_high": 0.771875,
+     "harmonic_rate": 0.0,
+     "positive_count": 160.0,
+     "negative_count": 40.0,
+     "recovery_snr_5_8": 0.08,
+     "recovery_snr_8_12": 0.3157894736842105,
+     "recovery_snr_12_18": 0.8048780487804879,
+     "recovery_snr_18_25": 0.8064516129032258
+    },
+    "runtime_s": 8.775453336000055,
+    "truth_sha256": "1bc9194b06bd3477c3677bd0dca48e4b8c8b515070c824ba9f61f6254457292c",
+    "curves_sha256": "23aa090420ec42071a03b2e970c8b8e515f367e5814fadd56d93f2abd0a7a838",
+    "run_id": "99a986d88ff947b9b427a1d70382730e"
+   },
+   "holdout": {
+    "measurements": {
+     "recovery_rate": 0.4125,
+     "false_alarm_rate": 0.125,
+     "balanced_accuracy": 0.64375,
+     "balanced_accuracy_ci_low": 0.5561718749999999,
+     "balanced_accuracy_ci_high": 0.721875,
+     "harmonic_rate": 0.0125,
+     "positive_count": 160.0,
+     "negative_count": 40.0,
+     "recovery_snr_5_8": 0.0,
+     "recovery_snr_8_12": 0.2619047619047619,
+     "recovery_snr_12_18": 0.6904761904761905,
+     "recovery_snr_18_25": 0.7878787878787878
+    },
+    "runtime_s": 8.684022080999966,
+    "truth_sha256": "38631a51e3ab07c6f010d298c68bb8ac9d14d9b5be7e2ef367a4f4dcc6b8cef7",
+    "curves_sha256": "486df4ba2b4e339ce0df084cd3f5fe5cb1666252ca52e25def44c5d4d5fb5074",
+    "run_id": "b557e03a6e3b4c36b235b158512470c4"
+   },
+   "deterministic": true
+  }
+ },
+ "known_planets": {
+  "baseline": {
+   "config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 2000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "planets": [
+    {
+     "target_id": "KIC 6665695",
+     "name": "Kepler-601 b",
+     "catalog_period_days": 5.378868001,
+     "depth_ppm": 483.4,
+     "found_period_days": 5.376546530392684,
+     "sde": 23.150813290679906,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 6451936",
+     "name": "Kepler-173 c",
+     "catalog_period_days": 8.00579096,
+     "depth_ppm": 629.7,
+     "found_period_days": 9.487422876127194,
+     "sde": 6.665192549542783,
+     "detected": true,
+     "recovered": false,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 6063220",
+     "name": "Kepler-99 b",
+     "catalog_period_days": 4.603575293,
+     "depth_ppm": 440.4,
+     "found_period_days": 4.60705231620189,
+     "sde": 14.302355555011419,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11673802",
+     "name": "Kepler-1004 b",
+     "catalog_period_days": 5.28790754,
+     "depth_ppm": 343.9,
+     "found_period_days": 5.286961121396456,
+     "sde": 16.861178489668465,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 8878187",
+     "name": "Kepler-650 b",
+     "catalog_period_days": 3.032147946,
+     "depth_ppm": 488.6,
+     "found_period_days": 3.0338442859310972,
+     "sde": 16.633579181228058,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10858832",
+     "name": "Kepler-552 b",
+     "catalog_period_days": 5.263415218,
+     "depth_ppm": 1030.7,
+     "found_period_days": 5.261911029218214,
+     "sde": 12.029988028784505,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10982872",
+     "name": "Kepler-142 c",
+     "catalog_period_days": 4.761705895,
+     "depth_ppm": 497.1,
+     "found_period_days": 4.765196662693683,
+     "sde": 16.883555126969775,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11017901",
+     "name": "Kepler-447 b",
+     "catalog_period_days": 7.794302043,
+     "depth_ppm": 3387.4,
+     "found_period_days": 6.769387064002709,
+     "sde": 6.547148725155139,
+     "detected": true,
+     "recovered": false,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 5084942",
+     "name": "Kepler-475 b",
+     "catalog_period_days": 3.105507835,
+     "depth_ppm": 904.6,
+     "found_period_days": 3.105966438781852,
+     "sde": 26.18107295921115,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10616679",
+     "name": "Kepler-550 b",
+     "catalog_period_days": 8.600099313,
+     "depth_ppm": 2791.6,
+     "found_period_days": 8.60525182953078,
+     "sde": 18.178108130076986,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11551692",
+     "name": "Kepler-411 c",
+     "catalog_period_days": 7.834433676,
+     "depth_ppm": 2018.1,
+     "found_period_days": 5.104698672114402,
+     "sde": 7.1291065758334184,
+     "detected": true,
+     "recovered": false,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 4349452",
+     "name": "Kepler-25 b",
+     "catalog_period_days": 6.238535444,
+     "depth_ppm": 401.6,
+     "found_period_days": 6.362189688096753,
+     "sde": 16.772681844546938,
+     "detected": true,
+     "recovered": false,
+     "harmonic_only": true
+    },
+    {
+     "target_id": "KIC 10318874",
+     "name": "Kepler-94 b",
+     "catalog_period_days": 2.508057497,
+     "depth_ppm": 1507.6,
+     "found_period_days": 2.509415013808687,
+     "sde": 20.639360550926035,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 12470954",
+     "name": "Kepler-554 b",
+     "catalog_period_days": 1.902208647,
+     "depth_ppm": 2343.5,
+     "found_period_days": 1.901455341006373,
+     "sde": 21.424621080866565,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 5683743",
+     "name": "Kepler-546 b",
+     "catalog_period_days": 4.147021189,
+     "depth_ppm": 3680.7,
+     "found_period_days": 4.150747508305647,
+     "sde": 18.04209513467063,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 8456679",
+     "name": "Kepler-1990 b",
+     "catalog_period_days": 1.73513619,
+     "depth_ppm": 952.6,
+     "found_period_days": 1.7350924398923704,
+     "sde": 22.647403770028248,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    }
+   ],
+   "recovered": 12,
+   "total": 16,
+   "recovery_rate": 0.75,
+   "data_source": "real",
+   "catalog_version": "kepler-q-catalog-v1"
+  },
+  "candidate": {
+   "config": {
+    "detrend_window": 101,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 10000,
+    "detection_threshold": 9.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "planets": [
+    {
+     "target_id": "KIC 6665695",
+     "name": "Kepler-601 b",
+     "catalog_period_days": 5.378868001,
+     "depth_ppm": 483.4,
+     "found_period_days": 5.3775411423039685,
+     "sde": 23.87017182840764,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 6451936",
+     "name": "Kepler-173 c",
+     "catalog_period_days": 8.00579096,
+     "depth_ppm": 629.7,
+     "found_period_days": 8.010093727469359,
+     "sde": 29.434443952493616,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 6063220",
+     "name": "Kepler-99 b",
+     "catalog_period_days": 4.603575293,
+     "depth_ppm": 440.4,
+     "found_period_days": 4.604227103191048,
+     "sde": 25.218130795069793,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11673802",
+     "name": "Kepler-1004 b",
+     "catalog_period_days": 5.28790754,
+     "depth_ppm": 343.9,
+     "found_period_days": 5.287958115183246,
+     "sde": 15.05331684541769,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 8878187",
+     "name": "Kepler-650 b",
+     "catalog_period_days": 3.032147946,
+     "depth_ppm": 488.6,
+     "found_period_days": 3.0322052401746724,
+     "sde": 16.955281558304396,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10858832",
+     "name": "Kepler-552 b",
+     "catalog_period_days": 5.263415218,
+     "depth_ppm": 1030.7,
+     "found_period_days": 5.262908574135481,
+     "sde": 29.03010395856281,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10982872",
+     "name": "Kepler-142 c",
+     "catalog_period_days": 4.761705895,
+     "depth_ppm": 497.1,
+     "found_period_days": 4.7621088726961,
+     "sde": 21.575737197365566,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11017901",
+     "name": "Kepler-447 b",
+     "catalog_period_days": 7.794302043,
+     "depth_ppm": 3387.4,
+     "found_period_days": 7.796491228070175,
+     "sde": 28.931999141581368,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 5084942",
+     "name": "Kepler-475 b",
+     "catalog_period_days": 3.105507835,
+     "depth_ppm": 904.6,
+     "found_period_days": 3.1059547106513836,
+     "sde": 26.895582511524918,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 10616679",
+     "name": "Kepler-550 b",
+     "catalog_period_days": 8.600099313,
+     "depth_ppm": 2791.6,
+     "found_period_days": 8.59907120743034,
+     "sde": 24.236796069984635,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 11551692",
+     "name": "Kepler-411 c",
+     "catalog_period_days": 7.834433676,
+     "depth_ppm": 2018.1,
+     "found_period_days": 7.8349788434414664,
+     "sde": 27.853651540615964,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 4349452",
+     "name": "Kepler-25 b",
+     "catalog_period_days": 6.238535444,
+     "depth_ppm": 401.6,
+     "found_period_days": 6.359473382942187,
+     "sde": 18.76287323872149,
+     "detected": true,
+     "recovered": false,
+     "harmonic_only": true
+    },
+    {
+     "target_id": "KIC 10318874",
+     "name": "Kepler-94 b",
+     "catalog_period_days": 2.508057497,
+     "depth_ppm": 1507.6,
+     "found_period_days": 2.507900677200903,
+     "sde": 29.616777340122507,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 12470954",
+     "name": "Kepler-554 b",
+     "catalog_period_days": 1.902208647,
+     "depth_ppm": 2343.5,
+     "found_period_days": 1.902071563088512,
+     "sde": 23.0267280195741,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 5683743",
+     "name": "Kepler-546 b",
+     "catalog_period_days": 4.147021189,
+     "depth_ppm": 3680.7,
+     "found_period_days": 4.147069802164987,
+     "sde": 22.121728360261237,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    },
+    {
+     "target_id": "KIC 8456679",
+     "name": "Kepler-1990 b",
+     "catalog_period_days": 1.73513619,
+     "depth_ppm": 952.6,
+     "found_period_days": 1.7351241605497423,
+     "sde": 22.798051254004413,
+     "detected": true,
+     "recovered": true,
+     "harmonic_only": false
+    }
+   ],
+   "recovered": 15,
+   "total": 16,
+   "recovery_rate": 0.9375,
+   "data_source": "real",
+   "catalog_version": "kepler-q-catalog-v1"
+  }
+ }
+}

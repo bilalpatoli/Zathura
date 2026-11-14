@@ -10,7 +10,7 @@ from zathura.agents.memory import write_memory
 from zathura.agents.scientist import research_hypothesis
 from zathura.agents.skeptic import review_hypothesis
 from zathura.engine import (
-    BENCHMARK_VERSION, evaluate_experiment, get_experiment_results,
+    BENCHMARK_DESCRIPTION, BENCHMARK_VERSION, DATA_SOURCE, evaluate_experiment, get_experiment_results,
     load_targets, run_baseline, run_experiment,
 )
 from zathura.schema import BASELINE_CONFIG, ExperimentRecord
@@ -60,11 +60,7 @@ def run_research_loop(max_iterations, dataset_id="dev", on_event=None):
         started = time.perf_counter()
         metrics = best_results["measurements"] | {"current_best_config": best_config.model_dump(),
             "benchmark_version": BENCHMARK_VERSION,
-            "benchmark_description": "36 fixed dev examples: 24 injections at 4 depths per star, 12 controls. "
-                "Same cached curves and seed for every config; BLS 1-10 days with four durations. "
-                "SDE threshold, upper-only outlier removal, Lightkurve flatten; optimize balanced accuracy. "
-                "Recovery needs period match within 3%. Real source curves can contain native signals. "
-                "No per-depth metrics or extra validation modules are available; holdout runs only after tuning.",
+            "benchmark_description": BENCHMARK_DESCRIPTION,
         }
         try:
             hypothesis = research_hypothesis(history, metrics)
@@ -100,7 +96,7 @@ def run_research_loop(max_iterations, dataset_id="dev", on_event=None):
                 reviewer_decision={"decision": critique["decision"], "rationale": critique["rationale"]},
                 measurements=measurements, runtime_s=time.perf_counter() - started,
                 evaluation_result=evaluation, memory_refs=list(dict.fromkeys(refs)),
-                accepted=accepted, data_source="placeholder",
+                accepted=accepted, data_source=DATA_SOURCE,
             )
             save_record(record)
             records.append(record)

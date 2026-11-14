@@ -29,13 +29,13 @@ def main():
         proposed_config=hypothesis["proposed_config"],
         reviewer_decision={"decision": "revise", "rationale": "Not reviewed: skeptic is not implemented in this slice."},
         measurements=results["measurements"], runtime_s=results["measurements"]["runtime_s"],
-        evaluation_result=evaluation, accepted=False, data_source="placeholder",
+        evaluation_result=evaluation, accepted=False, data_source=results["data_source"],
     )
     save_record(record)
     print("Experiment:", json.dumps(results["measurements"]))
     print("Evaluation:", json.dumps(evaluation))
     print("Saved record:", DEFAULT_LOG)
-    print("All science results: PLACEHOLDER. No reviewer acceptance claimed.")
+    print("Injection-recovery on real Kepler curves. No reviewer acceptance claimed.")
 
 
 if __name__ == "__main__":

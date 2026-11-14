@@ -1,0 +1,311 @@
+{
+ "version": "kepler-q-catalog-v1",
+ "created": "2026-11-14T21:49:39.082963+00:00",
+ "seed": 2026,
+ "source": "NASA Exoplanet Archive TAP + MAST Kepler long-cadence PDCSAP",
+ "host_query": "select kepid, kepmag, teff, logg, rrmscdpp03p0 from keplerstellar where st_delivname='q1_q17_dr25_stellar' and kepmag between 11.5 and 13.5 and logg > 4.2 and teff between 5000 and 6500 and nkoi=0 and ntce=0 and st_quarters='11111111111111111'",
+ "planet_query": "select kepid, kepoi_name, kepler_name, koi_period, koi_time0bk, koi_duration, koi_depth, koi_model_snr, koi_kepmag from cumulative where koi_disposition='CONFIRMED' and koi_period between 1 and 10 and koi_model_snr between 60 and 5000 and koi_kepmag < 14.5",
+ "hosts": {
+  "dev": [
+   2309049,
+   2442551,
+   2556804,
+   3425414,
+   4742888,
+   5478060,
+   5643574,
+   6059883,
+   6271106,
+   6294620,
+   6350182,
+   6507790,
+   6627541,
+   6629356,
+   7592977,
+   7707962,
+   8008585,
+   8085539,
+   8176550,
+   8374180,
+   8524363,
+   9070728,
+   9072875,
+   9076664,
+   9156839,
+   9274155,
+   9389206,
+   9583359,
+   9595077,
+   9654982,
+   9713668,
+   9822439,
+   9941130,
+   10203255,
+   10203516,
+   10647686,
+   11307847,
+   11521255,
+   11809495,
+   12505525
+  ],
+  "holdout": [
+   2012841,
+   2305949,
+   2860306,
+   3958138,
+   4261762,
+   4458184,
+   4831875,
+   5262734,
+   5270944,
+   5271300,
+   5352151,
+   5438386,
+   5809758,
+   6613389,
+   6877075,
+   6950960,
+   7368688,
+   7510049,
+   7671318,
+   7691089,
+   7766185,
+   8044063,
+   8175049,
+   8265394,
+   8322064,
+   8655259,
+   8674734,
+   9071321,
+   9077929,
+   9520072,
+   9834570,
+   10723510,
+   10914134,
+   11029122,
+   11308629,
+   11564467,
+   12251751,
+   12266582,
+   12419039,
+   12599439
+  ]
+ },
+ "validation": [
+  {
+   "kepid": 6665695,
+   "koi": "K00561.01",
+   "name": "Kepler-601 b",
+   "period_days": 5.378868001,
+   "epoch_bkjd": 169.61512,
+   "duration_days": 0.113425,
+   "depth_ppm": 483.4,
+   "koi_model_snr": 60.6,
+   "host_koi_periods": [
+    5.378868001
+   ]
+  },
+  {
+   "kepid": 6451936,
+   "koi": "K00511.01",
+   "name": "Kepler-173 c",
+   "period_days": 8.00579096,
+   "epoch_bkjd": 170.50325,
+   "duration_days": 0.1272875,
+   "depth_ppm": 629.7,
+   "koi_model_snr": 69.2,
+   "host_koi_periods": [
+    4.26374378,
+    8.00579096
+   ]
+  },
+  {
+   "kepid": 6063220,
+   "koi": "K00305.01",
+   "name": "Kepler-99 b",
+   "period_days": 4.603575293,
+   "epoch_bkjd": 171.840124,
+   "duration_days": 0.0979125,
+   "depth_ppm": 440.4,
+   "koi_model_snr": 79.7,
+   "host_koi_periods": [
+    4.603575293
+   ]
+  },
+  {
+   "kepid": 11673802,
+   "koi": "K01894.01",
+   "name": "Kepler-1004 b",
+   "period_days": 5.28790754,
+   "epoch_bkjd": 135.36119,
+   "duration_days": 0.35530833333333334,
+   "depth_ppm": 343.9,
+   "koi_model_snr": 90.6,
+   "host_koi_periods": [
+    5.28790754
+   ]
+  },
+  {
+   "kepid": 8878187,
+   "koi": "K00697.01",
+   "name": "Kepler-650 b",
+   "period_days": 3.032147946,
+   "epoch_bkjd": 171.734281,
+   "duration_days": 0.16094583333333332,
+   "depth_ppm": 488.6,
+   "koi_model_snr": 103.1,
+   "host_koi_periods": [
+    3.032147946
+   ]
+  },
+  {
+   "kepid": 10858832,
+   "koi": "K00432.01",
+   "name": "Kepler-552 b",
+   "period_days": 5.263415218,
+   "epoch_bkjd": 174.351207,
+   "duration_days": 0.08935833333333333,
+   "depth_ppm": 1030.7,
+   "koi_model_snr": 117.0,
+   "host_koi_periods": [
+    5.263415218
+   ]
+  },
+  {
+   "kepid": 10982872,
+   "koi": "K00343.01",
+   "name": "Kepler-142 c",
+   "period_days": 4.761705895,
+   "epoch_bkjd": 170.335759,
+   "duration_days": 0.13775416666666665,
+   "depth_ppm": 497.1,
+   "koi_model_snr": 138.5,
+   "host_koi_periods": [
+    2.024143568,
+    4.761705895,
+    41.8085031
+   ]
+  },
+  {
+   "kepid": 11017901,
+   "koi": "K01800.01",
+   "name": "Kepler-447 b",
+   "period_days": 7.794302043,
+   "epoch_bkjd": 137.260385,
+   "duration_days": 0.046170833333333335,
+   "depth_ppm": 3387.4,
+   "koi_model_snr": 159.2,
+   "host_koi_periods": [
+    7.794302043
+   ]
+  },
+  {
+   "kepid": 5084942,
+   "koi": "K00161.01",
+   "name": "Kepler-475 b",
+   "period_days": 3.105507835,
+   "epoch_bkjd": 133.210427,
+   "duration_days": 0.07274166666666666,
+   "depth_ppm": 904.6,
+   "koi_model_snr": 178.6,
+   "host_koi_periods": [
+    3.105507835
+   ]
+  },
+  {
+   "kepid": 10616679,
+   "koi": "K00429.01",
+   "name": "Kepler-550 b",
+   "period_days": 8.600099313,
+   "epoch_bkjd": 172.529281,
+   "duration_days": 0.16698749999999998,
+   "depth_ppm": 2791.6,
+   "koi_model_snr": 209.2,
+   "host_koi_periods": [
+    8.600099313
+   ]
+  },
+  {
+   "kepid": 11551692,
+   "koi": "K01781.01",
+   "name": "Kepler-411 c",
+   "period_days": 7.834433676,
+   "epoch_bkjd": 135.222143,
+   "duration_days": 0.12041666666666667,
+   "depth_ppm": 2018.1,
+   "koi_model_snr": 246.6,
+   "host_koi_periods": [
+    3.005156911,
+    7.834433676,
+    58.0198583
+   ]
+  },
+  {
+   "kepid": 4349452,
+   "koi": "K00244.02",
+   "name": "Kepler-25 b",
+   "period_days": 6.238535444,
+   "epoch_bkjd": 171.706325,
+   "duration_days": 0.14689583333333334,
+   "depth_ppm": 401.6,
+   "koi_model_snr": 274.5,
+   "host_koi_periods": [
+    6.238535444,
+    12.720370263
+   ]
+  },
+  {
+   "kepid": 10318874,
+   "koi": "K00104.01",
+   "name": "Kepler-94 b",
+   "period_days": 2.508057497,
+   "epoch_bkjd": 135.000657,
+   "duration_days": 0.046391666666666664,
+   "depth_ppm": 1507.6,
+   "koi_model_snr": 312.7,
+   "host_koi_periods": [
+    2.508057497
+   ]
+  },
+  {
+   "kepid": 12470954,
+   "koi": "K00439.01",
+   "name": "Kepler-554 b",
+   "period_days": 1.902208647,
+   "epoch_bkjd": 170.449657,
+   "duration_days": 0.09161541666666667,
+   "depth_ppm": 2343.5,
+   "koi_model_snr": 363.2,
+   "host_koi_periods": [
+    1.902208647
+   ]
+  },
+  {
+   "kepid": 5683743,
+   "koi": "K00412.01",
+   "name": "Kepler-546 b",
+   "period_days": 4.147021189,
+   "epoch_bkjd": 170.325835,
+   "duration_days": 0.12082083333333334,
+   "depth_ppm": 3680.7,
+   "koi_model_snr": 421.2,
+   "host_koi_periods": [
+    4.147021189
+   ]
+  },
+  {
+   "kepid": 8456679,
+   "koi": "K00102.01",
+   "name": "Kepler-1990 b",
+   "period_days": 1.73513619,
+   "epoch_bkjd": 135.060047,
+   "duration_days": 0.09475416666666665,
+   "depth_ppm": 952.6,
+   "koi_model_snr": 473.2,
+   "host_koi_periods": [
+    1.73513619,
+    4.06844957
+   ]
+  }
+ ]
+}

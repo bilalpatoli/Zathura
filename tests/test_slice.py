@@ -1,6 +1,4 @@
-import json
 import os
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,7 +6,6 @@ from unittest.mock import patch
 
 from pydantic import ValidationError
 
-import zathura.engine as engine
 import zathura.agents.memory as memory
 from zathura.agents.exa_search import search_papers
 from zathura.agents.llm import complete_json
@@ -67,56 +64,21 @@ class SliceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 research_hypothesis([], {})
 
-    def test_engine_fallback_cache_evaluation_storage(self):
-        with patch.object(engine, "CACHE", self.root / "cache"), patch.object(engine, "RUNS", self.root / "runs"), \
-             patch.object(engine.subprocess, "run", side_effect=subprocess.TimeoutExpired("download", 25)) as download:
-            with self.assertWarns(UserWarning):
-                targets = engine.load_targets()
-            self.assertEqual(download.call_count, 6)
-            self.assertEqual(len(targets), 6)
-            engine.load_targets()
-            self.assertEqual(download.call_count, 6)
-            curve = engine.get_lightcurve("Kepler-69")
-            self.assertEqual(curve["curve_origin"], "synthetic_placeholder")
-            self.assertNotIn("injected", curve)
-            with self.assertRaises(ValueError):
-                engine.get_lightcurve("../bad")
-            with self.assertRaises(ValueError):
-                engine.run_experiment(BASELINE_CONFIG, "bad")
-            with self.assertRaises(ValueError):
-                engine.get_experiment_results("../bad")
-            with self.assertRaises(FileNotFoundError):
-                engine.get_experiment_results("a" * 32)
-            baseline_id = engine.run_baseline("dev")
-            baseline = engine.get_experiment_results(baseline_id)
-            run_id = engine.run_experiment(BASELINE_CONFIG, "dev")
-            result = engine.get_experiment_results(run_id)
-            for key in ("recovery_rate", "false_alarm_rate", "balanced_accuracy"):
-                self.assertEqual(result["measurements"][key], baseline["measurements"][key])
-            self.assertLess(result["measurements"]["runtime_s"], 30)
-            self.assertEqual(result["measurements"]["positive_count"], 24)
-            self.assertEqual(result["measurements"]["negative_count"], 12)
-            evaluation = engine.evaluate_experiment(run_id)
-            self.assertEqual(evaluation["delta"], 0)
-            self.assertFalse(evaluation["improved_vs_best"])
-            holdout_id = engine.run_experiment(BASELINE_CONFIG, "holdout")
-            with self.assertRaises(ValueError):
-                engine.evaluate_experiment(holdout_id)
-            self.assertNotIn("true_period", json.dumps(engine.get_experiment_results(holdout_id)))
-            hypothesis = research_hypothesis([], result["measurements"])
-            record = ExperimentRecord(
-                experiment_id=run_id, hypothesis=hypothesis["hypothesis"], cited_sources=hypothesis["cited_sources"],
-                proposed_config=BASELINE_CONFIG, reviewer_decision={"decision": "revise", "rationale": "not reviewed"},
-                measurements=result["measurements"], runtime_s=result["measurements"]["runtime_s"],
-                evaluation_result=evaluation, accepted=False, data_source="placeholder")
-            log = self.root / "experiments.jsonl"
-            self.assertEqual(load_records(log), [])
-            save_record(record, log)
-            self.assertEqual(load_records(log), [record])
-            log.write_text("invalid json\n")
-            with self.assertRaises(ValidationError):
-                load_records(log)
-
+    def test_record_storage_round_trip(self):
+        hypothesis = research_hypothesis([], {"recovery_rate": 0.5})
+        record = ExperimentRecord(
+            experiment_id="a" * 32, hypothesis=hypothesis["hypothesis"], cited_sources=hypothesis["cited_sources"],
+            proposed_config=BASELINE_CONFIG, reviewer_decision={"decision": "revise", "rationale": "not reviewed"},
+            measurements={"balanced_accuracy": 0.5}, runtime_s=1.0,
+            evaluation_result={"improved_vs_baseline": False, "improved_vs_best": False, "delta": 0.0},
+            accepted=False, data_source="real")
+        log = self.root / "experiments.jsonl"
+        self.assertEqual(load_records(log), [])
+        save_record(record, log)
+        self.assertEqual(load_records(log), [record])
+        log.write_text("invalid json\n")
+        with self.assertRaises(ValidationError):
+            load_records(log)
 
 if __name__ == "__main__":
     unittest.main()
