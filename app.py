@@ -15,6 +15,8 @@ from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory
 from zathura.story import render_story
 
 ASSETS = Path(__file__).resolve().parent / "assets"
+BENCHMARK_DISCLOSURE = ("Benchmark transits are synthetic injections into real Kepler photometry; "
+                        "historical mock/placeholder output stays labelled.")
 SVG = {
     "grid": '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>'
             '<rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -67,6 +69,7 @@ def page_header(title, subtitle=None, text=None, subtitle_size=20, title_size=38
     if text:
         parts.append(f'<div class="z-text" style="margin-top:{text_gap}px">{text}</div>')
     html_block(f'<div class="z-head" style="margin:{offset}px 0 {bottom}px">{"".join(parts)}</div>')
+    st.caption(BENCHMARK_DISCLOSURE)
 
 
 def metric_cards(items, compact=False):
@@ -133,9 +136,9 @@ def target_diagnostic(target):
 
 def service_line():
     mock = os.getenv("ZATHURA_MOCK") == "1"
-    openai = "LIVE" if os.getenv("OPENAI_API_KEY") and not mock else "MOCK"
-    exa = "LIVE" if os.getenv("EXA_API_KEY") and not mock else "MOCK"
-    pastdev = "REMOTE-FIRST / LIVE" if os.getenv("PASTDEV_API_KEY") else "LOCAL JSONL"
+    openai = "API configured" if os.getenv("OPENAI_API_KEY") and not mock else "MOCK"
+    exa = "API configured" if os.getenv("EXA_API_KEY") and not mock else "MOCK"
+    pastdev = "REMOTE-FIRST configured" if os.getenv("PASTDEV_API_KEY") else "LOCAL JSONL"
     return f"OpenAI: {openai} &nbsp;·&nbsp; Exa: {exa} &nbsp;·&nbsp; past.dev: {pastdev}"
 
 
@@ -164,7 +167,7 @@ def render_mission(state, worker):
     metric_cards([("Stars analyzed", analyzed), ("Experiments run", sum(bool(r["measurements"]) for r in records)),
                   ("Accepted improvements", sum(r["accepted"] for r in records)),
                   ("Reviewer rejections", sum(r["reviewer_decision"]["decision"] != "approve" for r in records))])
-    html_block(f'<div class="z-banner">{icon("info", 20, 1.6)}<span>Synthetic transit injections are used for benchmarks. Metrics show the latest mission only.</span></div>')
+    html_block(f'<div class="z-banner">{icon("info", 20, 1.6)}<span>Metrics show the latest mission only. Service configuration is not evidence of live use; see Sponsor Evidence for remote/mirror receipts.</span></div>')
     baseline = state["baseline"]
     if baseline:
         base = baseline["measurements"]["balanced_accuracy"]
@@ -255,6 +258,17 @@ def render_planets(state):
     fold.update_xaxes(range=[curve["phase"].min() - pad, curve["phase"].max() + pad])
     chart_card("fold", "Phase-folded light curve &nbsp;·&nbsp; days from peak transit center",
                style_figure(fold, 193, "Phase (days)"), source)
+    with st.expander("Source photometry and BLS periodogram"):
+        raw = go.Figure(go.Scattergl(x=curve["time"], y=curve["flux"], mode="markers",
+                                     marker=dict(size=3, color="#96a6cb")))
+        raw.update_yaxes(title="Normalized source flux")
+        chart_card("source", "Raw source photometry &nbsp;·&nbsp; before flattening",
+                   style_figure(raw, 280, "Time (BKJD)"), source)
+        periodogram = go.Figure(go.Scatter(x=curve["periods"], y=curve["power"],
+                                           line=dict(color="#ad7dee")))
+        periodogram.update_yaxes(title="BLS power")
+        chart_card("periodogram", "BLS periodogram &nbsp;·&nbsp; power versus trial period",
+                   style_figure(periodogram, 280, "Period (days)"), source)
 
 
 def render_events(state):

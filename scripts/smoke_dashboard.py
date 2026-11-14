@@ -46,6 +46,12 @@ def check(label):
         if page_app.exception:
             raise AssertionError([page, [e.message for e in page_app.exception]])
         assert not page_app.json, "Engineering pages must not dump raw JSON"
+        assert any("Benchmark transits are synthetic injections into real Kepler photometry" in caption.value
+                   for caption in page_app.caption), f"Missing benchmark disclosure: {page}"
+        if page == "Planet Detection":
+            assert len(page_app.get("plotly_chart")) == (4 if label == "existing data" else 0)
+            if label == "existing data":
+                assert any(e.label == "Source photometry and BLS periodogram" for e in page_app.expander)
         plots += len(page_app.get("plotly_chart"))
         print(f"PASS {label}: {page}")
     print(f"PASS {label}: {plots} plots; no render exceptions")

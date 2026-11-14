@@ -5,12 +5,68 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+
 from zathura.dashboard import Mission, read_jsonl, snapshot
 from zathura.engine import cached_targets
 from zathura.engine.data import load_catalog
 
 
 class DashboardTests(unittest.TestCase):
+    def test_service_configuration_is_not_live_evidence(self):
+        import app
+
+        keys = {"OPENAI_API_KEY": "test", "EXA_API_KEY": "test", "PASTDEV_API_KEY": "test"}
+        for env, expected in (({}, ("OpenAI: MOCK", "Exa: MOCK", "past.dev: LOCAL JSONL")),
+                              (keys, ("OpenAI: API configured", "Exa: API configured",
+                                      "past.dev: REMOTE-FIRST configured")),
+                              (keys | {"ZATHURA_MOCK": "1"},
+                               ("OpenAI: MOCK", "Exa: MOCK", "past.dev: REMOTE-FIRST configured"))):
+            with self.subTest(env=list(env)), patch.dict(app.os.environ, env, clear=True):
+                line = app.service_line()
+                for label in expected:
+                    self.assertIn(label, line)
+                self.assertNotIn("LIVE", line)
+
+    def test_planet_source_and_periodogram_charts(self):
+        import app
+
+        time = np.arange(10, dtype=float)
+        curve = {"time": time, "flux": time + 100, "flat_flux": time + 1,
+                 "phase": time - 5, "periods": time + 2, "power": time * 2,
+                 "in_transit": time < 2, "data_source": "real", "curve_origin": "Kepler PDCSAP",
+                 "known_periods": [3.0], "detected": True, "period_days": 3.0,
+                 "depth": 0.01, "duration_days": 0.1, "sde": 8.0}
+        ui = MagicMock()
+        ui.columns.return_value = [MagicMock(), MagicMock()]
+        ui.selectbox.return_value = "KIC 7"
+        state = {"targets": [{"target_id": "KIC 7"}]}
+        with patch.object(app, "st", ui), patch.object(app, "metric_cards"), \
+             patch.object(app, "target_diagnostic", return_value=curve), patch.object(app, "chart_card") as charts:
+            app.render_planets(state)
+            figures = {call.args[0]: call.args[2] for call in charts.call_args_list}
+            self.assertEqual(set(figures), {"curve", "fold", "source", "periodogram"})
+            np.testing.assert_array_equal(figures["source"].data[0].x, curve["time"])
+            np.testing.assert_array_equal(figures["source"].data[0].y, curve["flux"])
+            np.testing.assert_array_equal(figures["periodogram"].data[0].x, curve["periods"])
+            np.testing.assert_array_equal(figures["periodogram"].data[0].y, curve["power"])
+            ui.expander.assert_called_once_with("Source photometry and BLS periodogram")
+
+    def test_planet_diagnostics_empty_and_error(self):
+        import app
+
+        ui = MagicMock()
+        with patch.object(app, "st", ui), patch.object(app, "target_diagnostic") as diagnostic, \
+             patch.object(app, "chart_card") as charts:
+            app.render_planets({"targets": []})
+            diagnostic.assert_not_called()
+            ui.info.assert_called_once()
+            for error in (ValueError, OSError, RuntimeError):
+                diagnostic.side_effect = error("sensitive details")
+                app.render_planets({"targets": [{"target_id": "KIC 7"}]})
+                ui.warning.assert_called_with(f"Target diagnostic unavailable: {error.__name__}")
+            charts.assert_not_called()
+
     def test_mission_host_count_and_explicit_holdout_metrics(self):
         import app
 
