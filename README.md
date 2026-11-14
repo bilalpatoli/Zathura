@@ -1,8 +1,93 @@
-# Zathura — first slice
+# Zathura — autonomous transit research
 
 An offline-capable, **placeholder** benchmark for tuning a Box Least Squares
 exoplanet transit detector, with a scientist, independent skeptic, shared memory
-and a bounded research loop. No dashboard yet.
+and a bounded research loop, with a live Streamlit mission dashboard.
+
+## Dashboard
+
+```sh
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Open http://localhost:8501. The four tabs are Mission Control, Planet Detection,
+AI Research Timeline, and Experimental Results. Theme settings live in
+`.streamlit/config.toml`; charts use `plotly_dark`. No API credentials are needed
+to browse existing results. Missing data produces empty states without automatic
+NASA or agent calls. The explicit source-load button may download NASA curves,
+falling back to labelled synthetic curves if downloads fail.
+
+Launch Research Mission starts a daemon background worker. A two-second Streamlit
+fragment refreshes the timeline and results; worker callbacks never call Streamlit.
+Only one mission can run per dashboard process, including across browser sessions.
+Closing the browser does not stop it, but stopping/restarting Streamlit does.
+Do not concurrently run a CLI mission: JSONL storage has no cross-process locks.
+Launching can incur API charges when live credentials are configured. Backend
+indicators show configuration, not verified uptime; historical mock output remains
+labelled. A failed mission displays only its error type, not transport secrets.
+
+### Architecture and data flow
+
+- `app.py`: four `render_*` functions, Plotly presentation and a polling fragment.
+- `zathura/dashboard.py`: read-only snapshots from storage, events, memory mirror
+  and held-out results; `Mission.launch` owns the background thread.
+- `zathura/engine/__init__.py`: `cached_targets` reads available source metadata
+  without downloading; `inspect_target` returns read-only, un-injected light-curve
+  diagnostics. The UI never opens benchmark truth or calculates detections itself.
+- `zathura/orchestrator.py::run_research_loop`: scientist → skeptic → optional
+  single revision/binary review → approved dev experiment → evaluator → storage and
+  shared memory → final holdout. Events go to `data/events.jsonl` and the callback.
+- **All Exa calls:** `zathura/agents/exa_search.py::search_papers`, specifically
+  `Exa(api_key=key).search_and_contents(...)`. The scientist calls this wrapper;
+  the dashboard only renders returned source titles and links. Missing keys or
+  `ZATHURA_MOCK=1` select clearly labelled mock OpenAI/Exa behavior.
+- **past.dev identities:** `research-scientist` writes hypotheses and measured
+  results; `skeptic` writes critiques. Both recall project-visible entries written
+  by either author. With `PASTDEV_API_KEY`, writes hit Past.dev ingestion first and
+  are mirrored to `data/pastdev-memory.jsonl` after acceptance. Loop/UI reads use
+  that mirror to avoid indexing latency; explicit `recall_remote` and
+  `scripts/check_memory.py` verify server-only exchange. Without a key,
+  `data/memory.jsonl` is the local backend, not a simulated Past.dev service.
+  The exchange view shows the most recent 200 author-attributed entries.
+
+### Methodology and limitations
+
+Every current detector/benchmark result is `data_source="placeholder"`, visibly
+badged **PLACEHOLDER engine**. Real cached NASA observations do not make this a
+validated planet detector. Synthetic source fallbacks, mock literature and mock
+agent output are separately labelled. Catalog host labels are not validation of
+the displayed peak; rounded known periods for Kepler-69/10/22 are reference values
+from the NASA Exoplanet Archive. The diagnostic searches only 1–10 days with the
+baseline configuration, so long catalog periods cannot be recovered here.
+
+Each dev/holdout split has only 36 fixed examples: four injected depths and two
+controls per cached star (24 positives, 12 negatives). Splits use different fixed
+seeds but reuse the same six source stars, so they are not independent stellar
+populations. Native signals may contaminate negatives. Recovery requires a period
+match within 3%; false-alarm rate uses controls; balanced accuracy averages
+recovery and specificity. Runtime is measured detector time, not total API latency.
+The target plots show source curves, not injected benchmark examples. The strongest
+BLS peak is unverified, and below-threshold peaks are explicitly not detections.
+
+Dashboard baseline/best comparisons and charts use only the latest mission to
+avoid mixing benchmark versions. Rejections have missing metrics, not zero scores.
+Acceptance means strictly improved dev balanced accuracy, not just reviewer
+approval. The separate held-out panel shows the latest completed holdout and its
+loop ID; during a new mission it may still belong to the previous mission. Agents
+never receive holdout results. The Python API boundary is not a security sandbox.
+Historical LLM-reported memory influence without deterministic veto evidence is
+marked UNVERIFIED, not presented as proof that memory changed a decision.
+
+Headless checks:
+
+```sh
+.venv/bin/python scripts/smoke_dashboard.py
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/streamlit run app.py --server.port 8501 --server.headless true
+curl http://localhost:8501/_stcore/health
+```
 
 ## Run (Python 3.10+)
 

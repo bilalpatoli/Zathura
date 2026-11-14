@@ -171,3 +171,45 @@ def evaluate_experiment(run_id):
 def get_experiment_results(run_id):
     """Aggregate metrics only; no per-target predictions or injection answers."""
     return _read_run(run_id)
+
+
+def cached_targets():
+    """Read cached target metadata without triggering downloads."""
+    targets = []
+    for target in _TARGETS:
+        path = _cache_path(target)
+        if path.exists():
+            with np.load(path) as cached:
+                targets.append({"target_id": target, "curve_origin": str(cached["origin"]),
+                                "data_source": "placeholder"})
+    return targets
+
+
+def inspect_target(target_id, config=None):
+    """Read-only diagnostic on an un-injected source, not a benchmark example."""
+    config = DetectionConfig.model_validate(config or BASELINE_CONFIG)
+    curve = get_lightcurve(target_id)
+    valid = np.isfinite(curve["time"]) & np.isfinite(curve["flux"])
+    t, flux = curve["time"][valid], curve["flux"][valid]
+    order = np.argsort(t)
+    t, flux = t[order], flux[order]
+    if len(t) < 10 or np.ptp(t) <= 1:
+        raise ValueError("Insufficient finite light-curve samples for BLS")
+    flux = flux / np.median(flux)
+    window = min(config.detrend_window, len(flux) // 2 * 2 - 1)
+    flat = np.asarray(LightCurve(time=t, flux=flux).flatten(window_length=window).flux.value)
+    scale = max(1.4826 * np.median(np.abs(flat - np.median(flat))), 1e-10)
+    keep = flat < np.median(flat) + config.outlier_sigma * scale
+    bls = BoxLeastSquares(t[keep], flat[keep])
+    result = bls.power(np.linspace(1, min(10, np.ptp(t)), config.period_grid_size),
+                       np.linspace(config.duration_min_days, config.duration_max_days, 4))
+    peak = int(np.argmax(result.power))
+    period, epoch, duration = (float(result[key][peak]) for key in ("period", "transit_time", "duration"))
+    sde = float((result.power[peak] - np.mean(result.power)) / max(np.std(result.power), 1e-12))
+    phase = (t - epoch + period / 2) % period - period / 2
+    return curve | {"time": t, "flux": flux, "flat_flux": flat, "phase": phase,
+                    "in_transit": np.abs(phase) < duration / 2,
+                    "periods": np.asarray(result.period), "power": np.asarray(result.power),
+                    "period_days": period, "depth": float(result.depth[peak]),
+                    "duration_days": duration, "sde": sde,
+                    "detected": sde >= config.detection_threshold}

@@ -14,3 +14,5 @@ data/test-output.txt
 data/skeptic-check.txt
 data/pastdev-memory.jsonl
 data/memory-check.txt
+data/dashboard-smoke.txt
+data/dashboard-tests.txt
