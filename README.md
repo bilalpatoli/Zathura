@@ -13,9 +13,10 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open http://localhost:8501. The four tabs are Mission Control, Planet Detection,
+Open http://localhost:8501. The sidebar pages are Mission Control, Planet Detection,
 AI Research Timeline, and Experimental Results. Theme settings live in
-`.streamlit/config.toml`; charts use `plotly_dark`. No API credentials are needed
+`.streamlit/config.toml` (Noto Sans from Google Fonts, falling back to the system sans-serif);
+page styling and the logo live in `assets/`. No API credentials are needed
 to browse existing results. Missing data produces empty states without automatic
 NASA or agent calls; the committed cache needs no network access.
 
