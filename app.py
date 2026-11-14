@@ -49,7 +49,8 @@ def render_mission(state, worker):
     st.info(" · ".join(services))
     st.caption("Configured does not guarantee service availability. Historical mock output retains its MOCK labels.")
     records = state["records"]
-    analyzed = next((len(e["payload"]) for e in state["latest"] if e.get("step") == "targets"), 0) if state["baseline"] else 0
+    analyzed = (state["baseline"].get("provenance", {}).get("host_count", 0)
+                if state["baseline"] else 0)
     cols = st.columns(4)
     for col, label, value in zip(cols, ["Stars analyzed", "Experiments run", "Accepted improvements", "Reviewer rejections"],
                                  [analyzed, sum(bool(r["measurements"]) for r in records), sum(r["accepted"] for r in records),
@@ -215,9 +216,15 @@ def render_results(state):
     else:
         result = state["holdout"][-1]
         st.caption(f"Latest completed holdout · loop {result.get('loop_id', 'unknown')} · {result.get('timestamp', '')}")
-        for col, (key, value) in zip(st.columns(4), result["measurements"].items()):
+        measurements = result["measurements"]
+        for col, key in zip(st.columns(4), ("recovery_rate", "false_alarm_rate", "balanced_accuracy", "runtime_s")):
             with col:
-                metric(key.replace("_", " "), f"{value:.4f}", result.get("data_source"))
+                value = measurements.get(key)
+                metric(key.replace("_", " "), f"{value:.4f}" if value is not None else "—", result.get("data_source"))
+        low, high = (measurements.get(key) for key in ("balanced_accuracy_ci_low", "balanced_accuracy_ci_high"))
+        if low is not None and high is not None:
+            badge(result.get("data_source"))
+            st.caption(f"Balanced accuracy 95% confidence interval: [{low:.4f}, {high:.4f}]")
     with st.expander("All stored hypotheses (may span incompatible benchmark versions)"):
         for record in state["records"]:
             badge(record["data_source"])

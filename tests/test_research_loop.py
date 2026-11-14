@@ -293,6 +293,26 @@ class ResearchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "after correction"):
                 review_hypothesis(hypothesis)
 
+    def test_current_best_runtime_gates_first_proposal_without_memory(self):
+        best = BASELINE_CONFIG.model_dump()
+        request = {"dataset_id": "dev", "action": "run_experiment"}
+        config = best | {"period_grid_size": 50000}
+        response = {"decision": "reject", "rationale": "The current baseline implies a 50-second grid search, above the 30-second budget.",
+                    "concerns": [], "requested_changes": [], "concrete_problem": "runtime", "cited_memory_ids": []}
+        with patch("zathura.agents.skeptic.recall_memory", return_value=[]), \
+             patch("zathura.agents.skeptic.complete_json", return_value=response) as client:
+            review = review_hypothesis({"proposed_config": config, "current_best_config": best,
+                "experiment_request": request, "context_metrics": {"runtime_s": 2.0}})
+        self.assertEqual(review["decision"], "reject")
+        fact = client.call_args.args[0]["blocking_facts"]["runtime"][0]
+        self.assertEqual(fact["source"], "current_best")
+        self.assertEqual(fact["estimated_runtime_s"], 50.0)
+        self.assertNotIn("memory_id", fact)
+        for metrics in (None, {}, {"runtime_s": 0}):
+            self.assertNotIn("runtime", _blocking_facts(config, best, request, [], metrics))
+        self.assertNotIn("runtime", _blocking_facts(best | {"period_grid_size": 5000}, best, request, [], {"runtime_s": 2.0}))
+        self.assertNotIn("runtime", _blocking_facts(best | {"detrend_window": 101}, best, request, [], {"runtime_s": 2.0}))
+
     def test_specific_blocking_facts_and_sentence_level_grounding(self):
         best = BASELINE_CONFIG.model_dump()
         config = best | {"period_grid_size": 50000}

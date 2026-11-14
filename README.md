@@ -122,7 +122,7 @@ quality-masked long-cadence PDCSAP quarter per star from MAST (`data/catalog.jso
 `data/cache/kic_*.npz`, ~4 MB, committed):
 
 - 40 dev and 40 holdout benchmark stars, disjoint: quiet FGK dwarfs (Teff
-  4800-6500 K, log g > 4, Kp 11-14.5) with no KOI or TCE.
+  5000-6500 K, log g > 4.2, Kp 11.5-13.5) with no KOI or TCE.
 - 16 validation stars hosting confirmed planets with 1-10 day periods, spread in
   catalog SNR. These never enter the benchmark.
 

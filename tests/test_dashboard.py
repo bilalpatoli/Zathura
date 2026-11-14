@@ -3,7 +3,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from zathura.dashboard import Mission, read_jsonl, snapshot
 from zathura.engine import cached_targets
@@ -11,6 +11,46 @@ from zathura.engine.data import load_catalog
 
 
 class DashboardTests(unittest.TestCase):
+    def test_mission_host_count_and_explicit_holdout_metrics(self):
+        import app
+
+        state = {"records": [], "current": [], "targets": [{}] * 96, "latest": [],
+                 "baseline": {"data_source": "real", "provenance": {"host_count": 40},
+                              "measurements": {"balanced_accuracy": 0.7, "recovery_rate": 0.5,
+                                               "false_alarm_rate": 0.1, "runtime_s": 3.2}},
+                 "holdout": [{"data_source": "real", "measurements": {
+                     "balanced_accuracy_ci_low": 0.6, "balanced_accuracy_ci_high": 0.8,
+                     "runtime_s": 3.2, "balanced_accuracy": 0.7, "false_alarm_rate": 0.1,
+                     "recovery_rate": 0.5}}]}
+        counts = []
+
+        def columns(n):
+            result = [MagicMock() for _ in range(n)]
+            for col in result:
+                col.__enter__.return_value = col
+                col.metric.side_effect = lambda label, value: counts.append((label, value))
+            return result
+
+        ui = MagicMock()
+        ui.columns.side_effect = columns
+        ui.button.return_value = False
+        worker = MagicMock()
+        worker.status.return_value = {"running": False, "iteration": 0, "error": None}
+        with patch.object(app, "st", ui), patch.object(app, "metric") as metric:
+            app.render_mission(state, worker)
+            self.assertIn(("Stars analyzed", 40), counts)
+            app.render_results(state)
+            self.assertEqual([call.args[0] for call in metric.call_args_list[-4:]],
+                             ["recovery rate", "false alarm rate", "balanced accuracy", "runtime s"])
+            self.assertEqual(metric.call_args_list[-1].args[1], "3.2000")
+            ui.caption.assert_any_call("Balanced accuracy 95% confidence interval: [0.6000, 0.8000]")
+            state["baseline"]["provenance"] = {}
+            app.render_mission(state, worker)
+            self.assertIn(("Stars analyzed", 0), counts)
+            state["holdout"] = [{"data_source": "placeholder", "measurements": {}}]
+            app.render_results(state)
+            self.assertTrue(all(call.args[1] == "—" for call in metric.call_args_list[-4:]))
+
     def test_jsonl_missing_partial_and_valid_lines(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.jsonl"
