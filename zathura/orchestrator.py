@@ -77,7 +77,7 @@ def run_research_loop(max_iterations, dataset_id="dev", on_event=None):
                 hypothesis = research_hypothesis(history + [{"proposed_config": prior["proposed_config"].model_dump(), "accepted": False}],
                                                  metrics | {"revision_feedback": critique})
                 emit("revision", "research-scientist", {"iteration": iteration, **hypothesis})
-                critique = review_hypothesis(hypothesis)
+                critique = review_hypothesis(hypothesis, final_review=True)
                 emit("review_revision", "skeptic", {"iteration": iteration, **critique})
                 refs += hypothesis["recalled_memory_ids"] + [hypothesis["memory_id"], critique["memory_id"]]
             measurements = {}

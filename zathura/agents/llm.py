@@ -26,6 +26,13 @@ SKEPTIC_PROMPT = (
     " Review ONLY the current hypothesis.proposed_config, not a recalled proposal. "
     "A hypothesis memory is NOT a completed experiment. Do not claim past measured failure unless "
     "a result memory contains actual measurements. Do not invent past outcomes or configurations."
+    " Default to APPROVE cheap, bounded, single-parameter, untried dev experiments. "
+    "This is an experiment: the evaluator, not your intuition, decides improvement. "
+    "Uncertain benefit, lack of prior validation, or a modest parameter change is NOT grounds for revision. "
+    "Set concrete_problem=none unless there is an actionable current problem. "
+    "Cite prior outcomes ONLY via cited_memory_ids from supplied outcome_evidence. "
+    "Do not write historical claims in rationale or concerns; the application renders cited outcomes. "
+    "If final_review is true, choose approve or reject, NEVER revise."
 )
 
 
@@ -33,8 +40,12 @@ def _response_schema(payload, purpose):
     string = {"type": "string"}
     strings = {"type": "array", "items": string}
     if purpose == "skeptic":
-        properties = {"decision": {"type": "string", "enum": ["approve", "reject", "revise"]},
-                      "rationale": string, "concerns": strings, "requested_changes": strings}
+        decisions = ["approve", "reject"] if payload.get("final_review") else ["approve", "reject", "revise"]
+        evidence_ids = [m["memory_id"] for m in payload.get("outcome_evidence", [])]
+        properties = {"decision": {"type": "string", "enum": decisions},
+                      "rationale": string, "concerns": strings, "requested_changes": strings,
+                      "concrete_problem": {"type": "string", "enum": ["none", "unfair_comparison", "false_positive_risk", "runtime", "duplicate"]},
+                      "cited_memory_ids": {"type": "array", "items": {"type": "string", "enum": evidence_ids or [""]}}}
     else:
         choices = [{"candidate_id": f"candidate-{i}", "config": config}
                    for i, config in enumerate(payload["candidate_configs"])]
@@ -61,7 +72,8 @@ def complete_json(payload, purpose="scientist"):
     if not key or os.getenv("ZATHURA_MOCK") == "1":
         if purpose == "skeptic":
             return {"decision": "approve", "rationale": "[MOCK] Bounded single-parameter dev comparison is worth testing.",
-                    "concerns": ["[MOCK] Monitor false alarms as well as recovery."], "requested_changes": []}
+                    "concerns": ["[MOCK] Monitor false alarms as well as recovery."], "requested_changes": [],
+                    "concrete_problem": "none", "cited_memory_ids": []}
         candidates = payload.get("candidate_configs", [])
         if not candidates:
             raise ValueError("No untried single-parameter configurations remain")

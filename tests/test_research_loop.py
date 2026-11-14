@@ -11,7 +11,7 @@ import zathura.agents.memory as memory
 import zathura.orchestrator as orchestrator
 from zathura.agents import llm
 from zathura.agents.exa_search import search_papers
-from zathura.agents.scientist import _normalize, memory_conflicts, research_hypothesis
+from zathura.agents.scientist import _ground_prose, _normalize, memory_conflicts, research_hypothesis
 from zathura.agents.skeptic import review_hypothesis
 from zathura.schema import BASELINE_CONFIG
 
@@ -24,9 +24,12 @@ class ResearchTests(unittest.TestCase):
         self.env.start()
         self.path = patch.object(memory, "MEMORY_PATH", self.root / "memory.jsonl")
         self.path.start()
+        self.mirror = patch.object(memory, "PASTDEV_MIRROR_PATH", self.root / "pastdev-memory.jsonl")
+        self.mirror.start()
 
     def tearDown(self):
         self.path.stop()
+        self.mirror.stop()
         self.env.stop()
         self.temp.cleanup()
 
@@ -50,11 +53,13 @@ class ResearchTests(unittest.TestCase):
             memory.recall_memory("skeptic", "")
 
     def test_pastdev_documented_ingest_poll_and_author_metadata(self):
-        backend = memory.PastDevBackend("test-key")
+        backend = memory.PastDevBackend("test-key", self.root / "mirror.jsonl")
         with patch.object(backend, "_request", side_effect=[
             {"status": "queued", "ingestionId": "ingestion"}, {"status": "completed"},
         ]) as request, patch.object(memory.time, "sleep"):
             memory_id = backend.write_memory("skeptic", {"failed": True}, "critique")
+            self.assertEqual(request.call_count, 1)
+            self.assertTrue(backend.wait_until_ready(memory_id))
         payload = request.call_args_list[0].args[2]
         self.assertEqual(payload["audience"], "project")
         self.assertEqual(payload["identity"], "skeptic")
@@ -64,15 +69,18 @@ class ResearchTests(unittest.TestCase):
             {"sources": [{"metadata": {"zathura": entry}}, {"metadata": {"zathura": entry}}]},
             {"sources": [{"metadata": {"foreign": "source"}}]},
         ]}):
-            self.assertEqual(backend.recall_memory("research-scientist", "failed"), [entry])
+            self.assertEqual(backend.recall_remote("research-scientist", "failed"), [entry])
+        with patch.object(backend, "_request", side_effect=AssertionError("mirror reads must not wait for network")):
+            self.assertEqual(backend.recall_memory("research-scientist", "failed")[0]["memory_id"], memory_id)
         with patch.object(backend, "_request", side_effect=[
             {"status": "queued", "ingestionId": "ingestion"}, {"status": "failed"},
         ]), patch.object(memory.time, "sleep"):
             with self.assertRaises(RuntimeError):
-                backend.write_memory("skeptic", "text", "critique")
+                pending = backend.write_memory("skeptic", "text", "critique")
+                backend.wait_until_ready(pending)
         with patch.object(backend, "_request", side_effect=ConnectionError("unavailable")):
             with self.assertRaises(ConnectionError):
-                backend.recall_memory("skeptic", "text")
+                backend.recall_remote("skeptic", "text")
         with patch.dict(os.environ, {"PASTDEV_API_KEY": "test-key"}):
             self.assertIsInstance(memory.get_backend(), memory.PastDevBackend)
 
@@ -86,6 +94,9 @@ class ResearchTests(unittest.TestCase):
         self.assertNotEqual(hypothesis["proposed_config"].period_grid_size, 5000)
         self.assertIn(memory_id, hypothesis["memory_influence"]["memory_ids"])
         self.assertIn("Deterministic memory veto", hypothesis["memory_influence"]["explanation"])
+        change = hypothesis["parameter_change"]
+        self.assertIn(f"{change['field']} {change['old']} → {change['new']}", hypothesis["hypothesis"])
+        self.assertNotIn("2000 → 5000", hypothesis["hypothesis"])
         self.assertEqual(memory_conflicts(hypothesis["proposed_config"].model_dump(), BASELINE_CONFIG.model_dump(),
                                          memory.recall_memory("skeptic", "", 10)), [])
 
@@ -148,7 +159,7 @@ class ResearchTests(unittest.TestCase):
             runs[run_id]["measurements"]["balanced_accuracy"] = 0.6
             return run_id
         critiques = [{"decision": decision, "rationale": "Test reviewer", "concerns": [], "requested_changes": [],
-                      "memory_id": uuid4().hex} for decision in ("revise", "approve", "reject", "revise", "revise")]
+                      "memory_id": uuid4().hex} for decision in ("revise", "approve", "reject", "revise", "reject")]
         events, records = [], []
         with patch.object(orchestrator, "DATA", self.root), \
              patch.object(orchestrator, "load_targets", return_value=[]), \
@@ -163,6 +174,8 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(summary["rejected"], 2)
         self.assertEqual(summary["accepted"], 1)
         self.assertEqual(review.call_count, 5)
+        self.assertEqual(review.call_args_list[1].kwargs, {"final_review": True})
+        self.assertEqual(review.call_args_list[4].kwargs, {"final_review": True})
         self.assertEqual([c.args[1] for c in run.call_args_list], ["dev", "holdout"])
         self.assertEqual(len(records), 3)
         self.assertEqual(records[1].measurements, {})
@@ -199,6 +212,56 @@ class ResearchTests(unittest.TestCase):
             summary = orchestrator.run_research_loop(0)
         self.assertEqual(summary["iterations"], 0)
         scientist.assert_not_called()
+
+    def test_binary_review_and_unsupported_prior_claims(self):
+        hypothesis = research_hypothesis([], {})
+        _, schema = llm._response_schema({"final_review": True}, "skeptic")
+        self.assertEqual(schema["json_schema"]["schema"]["properties"]["decision"]["enum"], ["approve", "reject"])
+        invalid = {"decision": "revise", "rationale": "A concern", "concerns": [], "requested_changes": []}
+        with patch("zathura.agents.skeptic.complete_json", return_value=invalid):
+            with self.assertRaises(ValueError):
+                review_hypothesis(hypothesis, final_review=True)
+        unsupported = invalid | {"decision": "reject", "concrete_problem": "duplicate",
+                                 "rationale": "Prior experiments failed and yielded limited success.",
+                                 "cited_memory_ids": ["nonexistent"], "concerns": ["Previous runs already failed."]}
+        with patch("zathura.agents.skeptic.complete_json", return_value=unsupported):
+            critique = review_hypothesis(hypothesis, final_review=True)
+        self.assertEqual(critique["decision"], "approve")
+        self.assertEqual(critique["dropped_memory_ids"], ["nonexistent"])
+        self.assertEqual(critique["prior_outcomes"], [])
+        self.assertNotIn("Prior experiments", critique["rationale"])
+        self.assertEqual(critique["concerns"], [])
+        metrics = {"balanced_accuracy": 0.5, "recovery_rate": 0.5, "false_alarm_rate": 0.5}
+        evidence_id = memory.write_memory("research-scientist", {
+            "proposed_config": hypothesis["proposed_config"].model_dump(), "measurements": metrics, "failed": True,
+        }, "result")
+        with patch("zathura.agents.skeptic.complete_json", return_value=unsupported | {"cited_memory_ids": [evidence_id]}):
+            grounded = review_hypothesis(hypothesis)
+        self.assertEqual(grounded["decision"], "reject")
+        self.assertEqual(grounded["prior_outcomes"][0]["measurements"], metrics)
+        self.assertEqual(grounded["prior_outcomes"][0]["memory_id"], evidence_id)
+
+    def test_stale_prose_is_discarded_for_actual_selected_change(self):
+        result = {"proposed_config": BASELINE_CONFIG.model_copy(update={"detection_threshold": 5.0}),
+                  "hypothesis": "A smaller period grid size will improve recovery.", "predicted_result": "Old prediction"}
+        grounded = _ground_prose(result, BASELINE_CONFIG.model_dump())
+        self.assertIn("detection_threshold 6.0 → 5.0", grounded["hypothesis"])
+        self.assertNotIn("period grid", grounded["hypothesis"])
+        self.assertEqual(grounded["prose_validation"]["discarded_stale_parameters"], ["period_grid_size"])
+
+    def test_unevidenced_model_memory_influence_is_discarded(self):
+        memory_id = memory.write_memory("skeptic", "Shared-memory integration check.", "integration-check")
+        complete = llm.complete_json
+
+        def unsupported(payload):
+            return complete(payload) | {"memory_influence": {
+                "memory_ids": [memory_id], "explanation": "Prior experiments failed."
+            }}
+
+        with patch("zathura.agents.scientist.complete_json", side_effect=unsupported):
+            hypothesis = research_hypothesis([], {})
+        self.assertEqual(hypothesis["memory_influence"]["memory_ids"], [])
+        self.assertEqual(hypothesis["memory_influence"]["explanation"], "No evidenced memory-driven change.")
 
 
 if __name__ == "__main__":

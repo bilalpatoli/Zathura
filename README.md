@@ -79,11 +79,18 @@ overlap then recency. Memory content may be structured JSON or text.
 
 Real Past.dev docs were found at <https://past.dev/mcp> and
 <https://past.dev/openapi.json>. `PastDevBackend` implements bearer-authenticated
-REST ingestion, bounded polling until completed, and recall with source metadata
+REST ingestion and recall with source metadata
 preserving the original author and envelope. Entries are project-visible so both
 agents share them. Use a dedicated Zathura project key in `PASTDEV_API_KEY` (the
 vendor examples call this `PAST_API_KEY`). Configured-backend errors propagate;
-there is no silent local fallback. No Past.dev key was available for live testing.
+there is no silent write fallback. When set, this key always selects Past.dev.
+Every successful remote ingest is immediately mirrored to `data/pastdev-memory.jsonl`.
+Loop reads use that separate mirror, so queued ingestion and remote recall latency
+do not block research. Empty mirrors bootstrap with remote recall; use
+`recall_remote` for explicit synchronization and server-only evidence, and
+`wait_until_ready` for bounded ingestion polling outside the loop.
+Run `.venv/bin/python scripts/check_memory.py` to verify server-only recall in
+both author/reader directions (requires a real key).
 
 The scientist recalls shared critiques/results before proposing and writes each
 hypothesis back. Citations are canonicalized by supplied URL rather than exact
@@ -93,16 +100,28 @@ validated configurations, eliminating invented/multi-parameter configurations.
 Numeric LLM output is also bounded/odd-normalized,
 logged in `config_adjustments`, then strictly checked against untried candidates;
 invalid output gets one corrective retry, not arbitrary parameter substitution.
-`memory_influence` contains recalled ids and an explanation only when cited.
+`memory_influence` contains recalled ids and an explanation only for an evidenced
+deterministic veto; unsupported model-reported influence is discarded.
 A deterministic safety check detects an actual first-choice configuration or
 parameter direction already failed/rejected in recalled structured memory,
 requests a safe alternative and records that veto explicitly. No memory benefit
 is claimed when there is no evidence. Negative directions are conservatively
 avoided; they are not scientifically proven universally bad.
+After the final selection, including any memory veto, hypothesis and prediction
+prose are regenerated from the actual parameter, old/new values and a parameter-specific
+mechanism. Stale LLM prose is discarded, with mismatched parameter mentions recorded
+in `prose_validation`. A veto explanation renders the actual final configuration,
+not the LLM's potentially stale explanation.
 
 The skeptic uses its own system prompt, recalls cross-agent history, checks the
 bounded comparison and false-positive risk, and writes critiques. Per iteration
-the loop allows one revision and one re-review. Unapproved final proposals count
+the loop allows one revision and one re-review. The second review is binary
+`approve|reject`, enforced in both the OpenAI JSON schema and Pydantic model.
+Cheap bounded untried experiments default to approval unless a concrete issue
+exists; uncertain benefits are left to the evaluator. Historical claims in free
+prose are dropped. Prior outcomes are rendered only from recalled measured-result
+entries identified by valid memory ids; unknown ids are discarded and reported.
+Unapproved final proposals count
 as rejected, are logged with empty measurements, and never run. Approved proposals
 run/evaluate on dev, are stored, and their results enter shared memory. Acceptance
 means strict `improved_vs_best`; the tuning incumbent updates on better dev score.

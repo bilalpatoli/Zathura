@@ -11,6 +11,36 @@ from zathura.schema import BASELINE_CONFIG, DetectionConfig
 
 AGENT = "research-scientist"
 
+MECHANISMS = {
+    "period_grid_size": "period sampling changes the chance of resolving a transit peak",
+    "detrend_window": "the flattening timescale changes transit preservation versus residual stellar variability",
+    "outlier_sigma": "upper-outlier rejection changes contamination while preserving negative transit dips",
+    "detection_threshold": "the SDE cutoff trades sensitivity against false alarms",
+    "duration_min_days": "the shortest searched duration changes sensitivity to short transits and noise",
+    "duration_max_days": "the longest searched duration changes sensitivity to long transits and variability",
+}
+
+
+def _ground_prose(result, best):
+    config = result["proposed_config"].model_dump()
+    field = next(k for k in best if config[k] != best[k])
+    aliases = {"period_grid_size": ("period grid", "grid size", "period_grid_size"),
+               "detrend_window": ("detrend", "flatten", "window"),
+               "outlier_sigma": ("outlier", "sigma clipping", "outlier_sigma"),
+               "detection_threshold": ("threshold", "sde cutoff"),
+               "duration_min_days": ("duration_min", "minimum duration", "shortest duration"),
+               "duration_max_days": ("duration_max", "maximum duration", "longest duration")}
+    text = result["hypothesis"].lower()
+    stale = [name for name, words in aliases.items() if name != field and any(w in text for w in words)]
+    prefix = "[MOCK] " if result.get("mock") else ""
+    result["hypothesis"] = (f"{prefix}Changing {field} {best[field]} → {config[field]} may improve balanced accuracy: "
+                            f"{MECHANISMS[field]}. Test on identical dev examples and measure recovery and false alarms.")
+    result["predicted_result"] = (f"{prefix}The {field} change {best[field]} → {config[field]} may improve the "
+                                  "recovery/false-alarm tradeoff; improvement is uncertain and requires evaluation.")
+    result["prose_validation"] = {"rewritten_for_final_config": True, "discarded_stale_parameters": stale}
+    result["parameter_change"] = {"field": field, "old": best[field], "new": config[field]}
+    return result
+
 
 def _url(url):
     parts = urlsplit(url)
@@ -135,13 +165,14 @@ def research_hypothesis(history, metrics):
         payload.update(candidate_configs=safe, memory_veto={"first_choice": first_choice, "memory_ids": conflicts})
         result = _normalize(complete_json(payload), best, safe, sources)
     influence = result.get("memory_influence", {})
-    known = {m["memory_id"] for m in memories}
+    known = set(conflicts)
     ids = influence.get("memory_ids", []) if isinstance(influence, dict) else []
     ids = [i for i in ids if isinstance(i, str) and i in known]
     explanation = influence.get("explanation", "") if isinstance(influence, dict) else ""
     if conflicts:
         ids = list(dict.fromkeys(conflicts + ids))
-        explanation = f"Deterministic memory veto changed the LLM's first-choice config {first_choice}: prior failure/rejection in {conflicts}. " + str(explanation)
+        explanation = (f"Deterministic memory veto changed the LLM's first-choice config {first_choice}: "
+                       f"prior failure/rejection in {conflicts}. Selected {result['proposed_config'].model_dump()} instead.")
     if not ids or not isinstance(explanation, str) or not explanation.strip():
         ids, explanation = [], "No evidenced memory-driven change."
     result["memory_influence"] = {"memory_ids": ids, "explanation": explanation}
@@ -150,6 +181,7 @@ def research_hypothesis(history, metrics):
     result["benchmark_version"] = metrics.get("benchmark_version")
     result["context_metrics"] = metrics
     result["first_choice_config"] = first_choice
+    result = _ground_prose(result, best)
     entry = {k: v for k, v in result.items() if k != "proposed_config"} | {"proposed_config": result["proposed_config"].model_dump()}
     result["memory_id"] = write_memory(AGENT, entry, "hypothesis", refs=ids)
     return result

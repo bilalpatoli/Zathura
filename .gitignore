@@ -12,3 +12,5 @@ data/live-check.txt
 data/loop-output.txt
 data/test-output.txt
 data/skeptic-check.txt
+data/pastdev-memory.jsonl
+data/memory-check.txt

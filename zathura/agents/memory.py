@@ -9,6 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 MEMORY_PATH = Path(__file__).resolve().parents[2] / "data" / "memory.jsonl"
+PASTDEV_MIRROR_PATH = Path(__file__).resolve().parents[2] / "data" / "pastdev-memory.jsonl"
 AGENTS = {"research-scientist", "skeptic"}
 
 
@@ -35,10 +36,13 @@ class LocalBackend:
 
     def write_memory(self, agent_id, content, kind, refs=None):
         entry = _entry(agent_id, content, kind, refs)
+        self.store(entry)
+        return entry["memory_id"]
+
+    def store(self, entry):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a") as stream:
             stream.write(json.dumps(entry) + "\n")
-        return entry["memory_id"]
 
     def recall_memory(self, agent_id, query, k=5):
         _validate(agent_id, k)
@@ -59,8 +63,9 @@ class PastDevBackend:
     """
     base_url = "https://api.past.dev/api/v1"
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, mirror_path=None):
         self.api_key = api_key
+        self.mirror = LocalBackend(mirror_path if mirror_path is not None else PASTDEV_MIRROR_PATH)
 
     def _request(self, method, path, payload=None):
         body = json.dumps(payload).encode() if payload is not None else None
@@ -77,18 +82,37 @@ class PastDevBackend:
             "label": f"Zathura {agent_id}: {kind}", "timestamp": entry["timestamp"],
             "identity": agent_id, "audience": "project", "metadata": {"zathura": entry},
         })
-        deadline = time.monotonic() + 45
-        status = receipt["status"]
+        if receipt["status"] not in ("queued", "completed"):
+            raise RuntimeError("Past.dev did not accept memory ingestion")
+        entry["pastdev"] = {"ingestion_id": receipt["ingestionId"], "status": receipt["status"]}
+        self.mirror.store(entry)
+        return entry["memory_id"]
+
+    def wait_until_ready(self, memory_id, timeout=60):
+        entries = self.mirror.recall_memory("research-scientist", "", k=200)
+        entry = next(m for m in entries if m["memory_id"] == memory_id)
+        deadline = time.monotonic() + timeout
+        status = entry["pastdev"]["status"]
         while status != "completed":
             if status == "failed":
                 raise RuntimeError("Past.dev ingestion failed; memory was not indexed")
             if time.monotonic() >= deadline:
-                raise TimeoutError(f"Past.dev ingestion still pending: {receipt['ingestionId']}")
+                raise TimeoutError(f"Past.dev ingestion still pending: {entry['pastdev']['ingestion_id']}")
             time.sleep(0.5)
-            status = self._request("GET", f"/ingest/{receipt['ingestionId']}")["status"]
-        return entry["memory_id"]
+            status = self._request("GET", f"/ingest/{entry['pastdev']['ingestion_id']}")["status"]
+        return True
 
     def recall_memory(self, agent_id, query, k=5):
+        local = self.mirror.recall_memory(agent_id, query, k)
+        if local:
+            return local
+        remote = self.recall_remote(agent_id, query, k)
+        for entry in remote:
+            self.mirror.store(entry)
+        return remote
+
+    def recall_remote(self, agent_id, query, k=5):
+        """Explicit server-only recall for synchronization and integration checks."""
         _validate(agent_id, k)
         response = self._request("POST", "/recall", {"query": query or "Zathura recent experiments",
                                                        "identity": agent_id, "limit": k, "level": "low"})
