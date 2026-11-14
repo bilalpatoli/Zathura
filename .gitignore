@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+data/experiments.jsonl
+data/runs/
+data/smoke-output.txt
