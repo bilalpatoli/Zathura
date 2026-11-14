@@ -1,7 +1,8 @@
 # Zathura — first slice
 
 An offline-capable, **placeholder** benchmark for tuning a Box Least Squares
-exoplanet transit detector. No skeptic, memory service, orchestrator or UI yet.
+exoplanet transit detector, with a scientist, independent skeptic, shared memory
+and a bounded research loop. No dashboard yet.
 
 ## Run (Python 3.10+)
 
@@ -9,6 +10,7 @@ exoplanet transit detector. No skeptic, memory service, orchestrator or UI yet.
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python scripts/smoke.py
+.venv/bin/python -m zathura.orchestrator --iterations 3
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -16,8 +18,8 @@ The smoke script deliberately forces `ZATHURA_MOCK=1`. Library calls otherwise
 use OpenAI when `OPENAI_API_KEY` is set and Exa when `EXA_API_KEY` is set,
 independently. Model: `ZATHURA_MODEL` (default `gpt-4o-mini`). Missing keys use
 clearly labelled deterministic mocks. Configured live-client errors propagate;
-they are never silently replaced with mock research. Live API calls have not
-been credential-tested. Do not commit `.env` or keys.
+they are never silently replaced with mock research. Real OpenAI + Exa scientist
+calls have been checked. Do not commit `.env` or keys.
 
 ## Engine contract
 
@@ -25,7 +27,8 @@ Import `load_targets`, `get_lightcurve`, `run_baseline`, `run_experiment`,
 `evaluate_experiment`, `get_experiment_results` from `zathura.engine`.
 Both run functions return a persistent run ID. Run a baseline before evaluating
 an experiment on the same dataset. `evaluate_experiment` returns improvement
-against baseline and the best other run on that dataset (strict improvement;
+against the latest preceding baseline and best preceding run since that baseline
+on the same dataset and benchmark version (strict improvement;
 delta is balanced accuracy minus baseline). Results include config, aggregate
 metrics and provenance, never per-target answers.
 
@@ -38,8 +41,12 @@ Small cache files are committed so subsequent demos need no NASA access.
 Source targets include Kepler-69/10/22 and three solar-like oscillation targets
 used as quiet-star candidates, not certified planet-free stars.
 
-Datasets `dev` and `holdout` use separate fixed seeds, controlled box-transit
-injections on half the curves, and non-injected controls on the rest. Holdout
+Datasets `dev` and `holdout` use separate fixed seeds. Each has 36 examples:
+four injections per cached star at depths 300, 700, 1500 and 3000 ppm, plus two
+non-injected controls per star. Period, epoch, duration and small independent
+noise realizations vary; all configurations see the same examples. Source
+curves are shared between splits, but injected signals and noise are not.
+These are correlated examples, not 36 independent stars. Holdout
 truth stays in private engine internals; agents only request dev. This is an
 API boundary, not protection against arbitrary code execution in the same
 Python process. Controls on real curves can contain native astrophysical
@@ -61,3 +68,49 @@ there is no fabricated skeptic approval. The scientist validates configurations,
 proposes one untried parameter change from the supplied/current accepted best,
 and restricts citations to search results. Mock search snippets are canned,
 not claims that the cited papers were retrieved or read.
+
+## Shared memory and review loop
+
+`write_memory(agent_id, content, kind, refs=None)` returns a memory id;
+`recall_memory(agent_id, query, k=5)` returns author-attributed entries, including
+other agents. Authors are `research-scientist` and `skeptic`. With no
+`PASTDEV_API_KEY`, the local backend uses `data/memory.jsonl` ranked by keyword
+overlap then recency. Memory content may be structured JSON or text.
+
+Real Past.dev docs were found at <https://past.dev/mcp> and
+<https://past.dev/openapi.json>. `PastDevBackend` implements bearer-authenticated
+REST ingestion, bounded polling until completed, and recall with source metadata
+preserving the original author and envelope. Entries are project-visible so both
+agents share them. Use a dedicated Zathura project key in `PASTDEV_API_KEY` (the
+vendor examples call this `PAST_API_KEY`). Configured-backend errors propagate;
+there is no silent local fallback. No Past.dev key was available for live testing.
+
+The scientist recalls shared critiques/results before proposing and writes each
+hypothesis back. Citations are canonicalized by supplied URL rather than exact
+LLM-regenerated snippet equality. Live OpenAI calls use strict JSON schemas with
+an enumerated candidate id and source URLs; candidate ids resolve to trusted
+validated configurations, eliminating invented/multi-parameter configurations.
+Numeric LLM output is also bounded/odd-normalized,
+logged in `config_adjustments`, then strictly checked against untried candidates;
+invalid output gets one corrective retry, not arbitrary parameter substitution.
+`memory_influence` contains recalled ids and an explanation only when cited.
+A deterministic safety check detects an actual first-choice configuration or
+parameter direction already failed/rejected in recalled structured memory,
+requests a safe alternative and records that veto explicitly. No memory benefit
+is claimed when there is no evidence. Negative directions are conservatively
+avoided; they are not scientifically proven universally bad.
+
+The skeptic uses its own system prompt, recalls cross-agent history, checks the
+bounded comparison and false-positive risk, and writes critiques. Per iteration
+the loop allows one revision and one re-review. Unapproved final proposals count
+as rejected, are logged with empty measurements, and never run. Approved proposals
+run/evaluate on dev, are stored, and their results enter shared memory. Acceptance
+means strict `improved_vs_best`; the tuning incumbent updates on better dev score.
+Each loop starts a new baseline comparison session; benchmark versioning excludes
+the earlier tiny benchmark from current comparisons.
+
+`on_event` receives `{loop_id, step, agent, payload, timestamp}` dictionaries, also
+appended to `data/events.jsonl`. After tuning, best config runs once on holdout
+(plus a holdout baseline); results go separately to `data/holdout.jsonl` and engine
+runs/events, **never to either agent or shared memory**. Events are for the future
+dashboard. All mutable data files are ignored. JSONL backends are single-process.

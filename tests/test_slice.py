@@ -9,6 +9,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 import zathura.engine as engine
+import zathura.agents.memory as memory
 from zathura.agents.exa_search import search_papers
 from zathura.agents.llm import complete_json
 from zathura.agents.scientist import research_hypothesis
@@ -20,11 +21,14 @@ class SliceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        self.env = patch.dict(os.environ, {"ZATHURA_MOCK": "1"})
+        self.env = patch.dict(os.environ, {"ZATHURA_MOCK": "1", "PASTDEV_API_KEY": ""})
         self.env.start()
+        self.memory = patch.object(memory, "MEMORY_PATH", self.root / "memory.jsonl")
+        self.memory.start()
 
     def tearDown(self):
         self.env.stop()
+        self.memory.stop()
         self.temp.cleanup()
 
     def test_config_bounds(self):
@@ -89,7 +93,9 @@ class SliceTests(unittest.TestCase):
             result = engine.get_experiment_results(run_id)
             for key in ("recovery_rate", "false_alarm_rate", "balanced_accuracy"):
                 self.assertEqual(result["measurements"][key], baseline["measurements"][key])
-            self.assertLess(result["measurements"]["runtime_s"], 60)
+            self.assertLess(result["measurements"]["runtime_s"], 30)
+            self.assertEqual(result["measurements"]["positive_count"], 24)
+            self.assertEqual(result["measurements"]["negative_count"], 12)
             evaluation = engine.evaluate_experiment(run_id)
             self.assertEqual(evaluation["delta"], 0)
             self.assertFalse(evaluation["improved_vs_best"])

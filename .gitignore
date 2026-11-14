@@ -5,3 +5,10 @@ __pycache__/
 data/experiments.jsonl
 data/runs/
 data/smoke-output.txt
+data/memory.jsonl
+data/events.jsonl
+data/holdout.jsonl
+data/live-check.txt
+data/loop-output.txt
+data/test-output.txt
+data/skeptic-check.txt
