@@ -1,8 +1,9 @@
 # Zathura — autonomous transit research
 
-An offline-capable, **placeholder** benchmark for tuning a Box Least Squares
-exoplanet transit detector, with a scientist, independent skeptic, shared memory
-and a bounded research loop, with a live Streamlit mission dashboard.
+An offline-capable injection-recovery benchmark on real NASA Kepler light curves
+for tuning a Box Least Squares exoplanet transit detector, with a scientist,
+independent skeptic, shared memory, a bounded research loop and a live Streamlit
+mission dashboard.
 
 ## Dashboard
 
@@ -16,8 +17,7 @@ Open http://localhost:8501. The four tabs are Mission Control, Planet Detection,
 AI Research Timeline, and Experimental Results. Theme settings live in
 `.streamlit/config.toml`; charts use `plotly_dark`. No API credentials are needed
 to browse existing results. Missing data produces empty states without automatic
-NASA or agent calls. The explicit source-load button may download NASA curves,
-falling back to labelled synthetic curves if downloads fail.
+NASA or agent calls; the committed cache needs no network access.
 
 Launch Research Mission starts a daemon background worker. A two-second Streamlit
 fragment refreshes the timeline and results; worker callbacks never call Streamlit.
@@ -54,22 +54,18 @@ labelled. A failed mission displays only its error type, not transport secrets.
 
 ### Methodology and limitations
 
-Every current detector/benchmark result is `data_source="placeholder"`, visibly
-badged **PLACEHOLDER engine**. Real cached NASA observations do not make this a
-validated planet detector. Synthetic source fallbacks, mock literature and mock
-agent output are separately labelled. Catalog host labels are not validation of
-the displayed peak; rounded known periods for Kepler-69/10/22 are reference values
-from the NASA Exoplanet Archive. The diagnostic searches only 1–10 days with the
-baseline configuration, so long catalog periods cannot be recovered here.
+Benchmark results are `data_source="real"`: injections into real Kepler PDCSAP
+curves. Results recorded by older placeholder engines keep their original label.
+Mock literature and mock agent output remain separately labelled. Benchmark stars
+have no KOI or TCE, but they are not certified planet-free: native signals and
+residual stellar variability can still produce "false alarms" in controls.
 
-Each dev/holdout split has only 36 fixed examples: four injected depths and two
-controls per cached star (24 positives, 12 negatives). Splits use different fixed
-seeds but reuse the same six source stars, so they are not independent stellar
-populations. Native signals may contaminate negatives. Recovery requires a period
-match within 3%; false-alarm rate uses controls; balanced accuracy averages
-recovery and specificity. Runtime is measured detector time, not total API latency.
-The target plots show source curves, not injected benchmark examples. The strongest
-BLS peak is unverified, and below-threshold peaks are explicitly not detections.
+Injected transits are trapezoids, not limb-darkened physical models, and SNR is
+measured against a fixed ~1-day reference detrend, so the absolute recovery rates
+are benchmark-specific. Comparisons between configs are the intended use: every
+config sees identical examples, and confidence intervals resample whole stars.
+Only one quarter per star is used (period search 1-10 days). The known-planet
+check validates the detector on real transits, not just injections.
 
 Dashboard baseline/best comparisons and charts use only the latest mission to
 avoid mixing benchmark versions. Rejections have missing metrics, not zero scores.
@@ -109,42 +105,59 @@ calls have been checked. Do not commit `.env` or keys.
 ## Engine contract
 
 Import `load_targets`, `get_lightcurve`, `run_baseline`, `run_experiment`,
-`evaluate_experiment`, `get_experiment_results` from `zathura.engine`.
-Both run functions return a persistent run ID. Run a baseline before evaluating
-an experiment on the same dataset. `evaluate_experiment` returns improvement
-against the latest preceding baseline and best preceding run since that baseline
-on the same dataset and benchmark version (strict improvement;
-delta is balanced accuracy minus baseline). Results include config, aggregate
-metrics and provenance, never per-target answers.
+`evaluate_experiment`, `get_experiment_results`, `validate_known_planets` and
+`inspect_target` from `zathura.engine`. Both run functions return a persistent
+run ID. Run a baseline before evaluating an experiment on the same dataset.
+`evaluate_experiment` compares against the latest preceding baseline and the best
+preceding run since that baseline (same dataset and benchmark version).
+`improved_*` are strict point-estimate comparisons; `significant_*` require the
+paired 95% bootstrap interval of the balanced-accuracy delta to exclude zero. Use
+`significant_*` to claim a method is better. Results include config, aggregate
+metrics and provenance, never per-example answers.
 
-`load_targets()` attempts Lightkurve/MAST downloads with a 25-second limit per
-target. Compact normalized curves (first 28 days) are cached under `data/cache`.
-If unavailable, explicitly marked synthetic curves are cached instead; delete
-that target's `.npz` to retry. `curve_origin` distinguishes real source curves
-from synthetic placeholders; **all benchmark results remain placeholder**.
-Small cache files are committed so subsequent demos need no NASA access.
-Source targets include Kepler-69/10/22 and three solar-like oscillation targets
-used as quiet-star candidates, not certified planet-free stars.
+### Data
 
-Datasets `dev` and `holdout` use separate fixed seeds. Each has 36 examples:
-four injections per cached star at depths 300, 700, 1500 and 3000 ppm, plus two
-non-injected controls per star. Period, epoch, duration and small independent
-noise realizations vary; all configurations see the same examples. Source
-curves are shared between splits, but injected signals and noise are not.
-These are correlated examples, not 36 independent stars. Holdout
-truth stays in private engine internals; agents only request dev. This is an
-API boundary, not protection against arbitrary code execution in the same
-Python process. Controls on real curves can contain native astrophysical
-signals; this small benchmark is not a scientifically clean survey.
+`scripts/build_catalog.py` queries the NASA Exoplanet Archive and downloads one
+quality-masked long-cadence PDCSAP quarter per star from MAST (`data/catalog.json`,
+`data/cache/kic_*.npz`, ~4 MB, committed):
 
-Flattening uses Lightkurve's `flatten(window_length=...)`; sigma clipping removes
-upper outliers while preserving transit dips. BLS searches 1–10 days with four
-durations in the configured range. Threshold is SDE = (peak power - mean power)
-/ standard deviation of grid power. Recovery requires an above-threshold peak
-within 3% of the injected period (no harmonic credit). False alarms are the
-fraction of non-injected controls with above-threshold peaks. Balanced accuracy
-is `(recovery_rate + 1 - false_alarm_rate) / 2`. Runtime measures experiment
-execution, not initial downloads. Larger grids cost more; default dev is small.
+- 40 dev and 40 holdout benchmark stars, disjoint: quiet FGK dwarfs (Teff
+  4800-6500 K, log g > 4, Kp 11-14.5) with no KOI or TCE.
+- 16 validation stars hosting confirmed planets with 1-10 day periods, spread in
+  catalog SNR. These never enter the benchmark.
+
+Rebuilding queries live archives, so the selection can change; the committed
+catalog is the reference.
+
+### Benchmark (`kepler-injection-v4`)
+
+Each benchmark star gives 4 injected transits and 1 un-injected control (160
+positives and 40 negatives per split; seeds 42 dev, 9173 holdout). Injections:
+log-uniform period 1-10 days with at least 3 observed transits, impact parameter
+0-0.9, duration from solar density, SNR 5-25 log-uniform, where SNR = depth /
+(noise at the transit timescale / sqrt(transits)). The real photometric noise is
+the noise model. The SHA-256 of the private truth table and of the curve files is
+recorded with every run.
+
+Preprocessing sorts, normalizes, flattens with Lightkurve (`detrend_window` in
+29.4-minute cadences) and clips only upward outliers. BLS uses a grid uniform in
+frequency over 1-10 days and 6 log-spaced durations; SDE = (peak power - mean) /
+std. Recovery needs an above-threshold peak within 1% of the injected period and
+epoch within one transit duration; detections at 1/3, 1/2, 2 or 3 times the period
+are reported as `harmonic_rate`, not recovery. Metrics: recovery, false-alarm
+rate, balanced accuracy with a star-level bootstrap CI, recovery per SNR bin and
+runtime per curve. `ZATHURA_WORKERS` sets the BLS thread count (default
+min(8, CPUs)); astropy's BLS kernel releases the GIL.
+
+### Reproducing results
+
+```sh
+.venv/bin/python scripts/reproduce.py --config data/candidate_config.json
+```
+
+Re-runs baseline and a tuned candidate on dev and holdout, repeats dev to check
+determinism, validates known planets, and compares every non-timing number with
+`data/reference_results.json` (`--update-reference` rewrites it).
 
 JSONL experiment records live at `data/experiments.jsonl`; engine run JSON files
 live at `data/runs/`. Both are local, ignored artifacts. Storage is append-only

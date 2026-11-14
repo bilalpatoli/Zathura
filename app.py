@@ -7,9 +7,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from zathura.dashboard import Mission, snapshot
-from zathura.engine import inspect_target, load_targets
+from zathura.engine import inspect_target
 
-KNOWN = {"Kepler-69": [13.722, 242.461], "Kepler-10": [0.8375, 45.294], "Kepler-22": [289.862]}
 ICONS = {"research-scientist": "🔬", "skeptic": "🛡️", "engine": "🔭", "orchestrator": "🚀"}
 
 
@@ -87,14 +86,12 @@ def render_mission(state, worker):
 
 def render_planets(state):
     st.header("Planet Detection")
-    st.caption("Read-only diagnostic of un-injected source curves using the baseline detector. Not benchmark recovery truth.")
+    st.caption("Read-only diagnostic of un-injected Kepler curves using the baseline detector. Not benchmark recovery truth.")
     if not state["targets"]:
-        st.info("No cached light curves. Load sources to attempt NASA downloads (synthetic fallback is explicitly labelled).")
-        if st.button("Load source light curves"):
-            load_targets()
-            st.rerun()
+        st.info("No cached light curves. Rebuild them with scripts/build_catalog.py.")
         return
-    target = st.selectbox("Star", [t["target_id"] for t in state["targets"]])
+    labels = {t["target_id"]: f"{t.get('name', t['target_id'])} · {t['target_id']} · {t['role']}" for t in state["targets"]}
+    target = st.selectbox("Star", list(labels), format_func=labels.get)
     try:
         curve = target_diagnostic(target)
     except (ValueError, OSError, RuntimeError) as exc:
@@ -105,11 +102,12 @@ def render_planets(state):
     st.write(f"Source provenance: {curve['curve_origin']}")
     if "synthetic" in curve["curve_origin"].lower():
         st.warning("SIMULATED source curve — not NASA observations.")
-    if target in KNOWN:
-        st.info(f"Known-planet host · catalog periods: {KNOWN[target]} days. This does NOT validate the detected peak.")
-        st.markdown("Source: [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) · rounded catalog reference periods.")
+    if curve.get("known_periods"):
+        periods = ", ".join(f"{p:.4f}" for p in curve["known_periods"])
+        st.info(f"Known-planet validation star · KOI periods: {periods} days.")
+        st.markdown("Source: [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) KOI cumulative table.")
     else:
-        st.info("Unverified-candidate target; quiet-star status is not certified.")
+        st.info("Benchmark host star with no KOI or TCE; not certified planet-free.")
     st.write("UNVERIFIED transit candidate" if curve["detected"] else "No threshold-crossing candidate; showing the strongest BLS peak only.")
     cols = st.columns(4)
     for col, label, value in zip(cols, ["Estimated period (days)", "Depth (ppm)", "Duration (days)", "Peak SDE"],
@@ -240,8 +238,8 @@ def main():
     </style>""", unsafe_allow_html=True)
     st.title("🪐 ZATHURA")
     st.caption("SEARCH THE STARS. QUESTION THE SIGNAL. REMEMBER THE SCIENCE.")
-    badge("placeholder")
-    st.caption("All current detector diagnostics and benchmark measurements use the placeholder engine. No confirmed discoveries are claimed.")
+    st.caption("Benchmarks inject synthetic transits into real Kepler light curves; results marked PLACEHOLDER come from the "
+               "earlier placeholder engine. No new planet discoveries are claimed.")
     live_dashboard()
 
 
