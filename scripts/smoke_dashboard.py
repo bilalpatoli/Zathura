@@ -1,4 +1,4 @@
-"""Headless render of the story and all engineering tabs, with empty-data coverage."""
+"""Headless render of the story and all engineering pages, with empty-data coverage."""
 import sys
 import tempfile
 from pathlib import Path
@@ -36,15 +36,19 @@ def check(label):
         assert not app.exception
         assert any("Eclipsing binary" in m.value for m in app.markdown)
         print(f"PASS {label}: real planet and EB finale; no render exceptions")
-    app.toggle[0].set_value(True).run(timeout=90)
-    if app.exception:
-        raise AssertionError([e.message for e in app.exception])
-    assert not app.json, "Engineering tabs must not dump raw JSON"
-    assert [tab.label for tab in app.tabs] == [
-        "Mission Control", "Planet Detection", "AI Research Timeline", "Experimental Results", "Sponsor Evidence"]
-    for tab in app.tabs:
-        print(f"PASS {label}: {tab.label}")
-    print(f"PASS {label}: {len(app.get('plotly_chart'))} plots; no render exceptions")
+    pages = {"Mission Control": "app.mission_page()", "Planet Detection": "app.planets_page()",
+             "AI Research Timeline": "app.timeline_page()", "Experimental Results": "app.results_page()",
+             "Sponsor Evidence": "app.sponsors_page()"}
+    plots = 0
+    for page, call in pages.items():
+        script = f"import sys; sys.path.insert(0, {str(ROOT)!r}); import app; app.setup(); {call}"
+        page_app = AppTest.from_string(script).run(timeout=90)
+        if page_app.exception:
+            raise AssertionError([page, [e.message for e in page_app.exception]])
+        assert not page_app.json, "Engineering pages must not dump raw JSON"
+        plots += len(page_app.get("plotly_chart"))
+        print(f"PASS {label}: {page}")
+    print(f"PASS {label}: {plots} plots; no render exceptions")
     return app
 
 

@@ -1,7 +1,13 @@
 [theme]
 base = "dark"
-primaryColor = "#39dce8"
-backgroundColor = "#060b18"
-secondaryBackgroundColor = "#10182d"
-textColor = "#e3e9ff"
-font = "sans serif"
+primaryColor = "#0a84ff"
+backgroundColor = "#0d121f"
+secondaryBackgroundColor = "#141c29"
+textColor = "#e8eaee"
+linkColor = "#3d9bff"
+borderColor = "#2c3949"
+font = "'Noto Sans':https://fonts.googleapis.com/css2?family=Noto+Sans:wdth,wght@62.5..100,100..900&display=swap, sans-serif"
+
+[theme.sidebar]
+backgroundColor = "#0d131f"
+secondaryBackgroundColor = "#141c29"

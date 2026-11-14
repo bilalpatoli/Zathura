@@ -16,14 +16,16 @@ streamlit run app.py
 Open http://localhost:8501. The default is the single-page **Zathura: An autonomous
 AI astronomer** story: The Signal, The Shadow, The Scientist Thinks, The Skeptic
 Pushes Back, It Remembers, and Planet or Impostor? **Begin Mission** runs the live
-research loop. The sidebar **Under the hood** toggle preserves all five tabs:
-Mission Control, Planet Detection, AI Research Timeline, Experimental Results,
-and Sponsor Evidence. Theme settings live in
-`.streamlit/config.toml`; charts use `plotly_dark`. No API credentials are needed
+research loop. The sidebar also opens Mission Control, Planet Detection,
+AI Research Timeline, Experimental Results, and Sponsor Evidence. These engineering
+pages use the redesigned cards, navigation, and live mission-status bar.
+Theme settings live in `.streamlit/config.toml` (Noto Sans from Google Fonts,
+falling back to the system sans-serif); page styling and the logo live in `assets/`.
+No API credentials are needed
 to browse existing results. Missing data produces empty states without automatic
 NASA or agent calls; the committed cache needs no network access.
 
-Begin Mission (or Launch Research Mission under the hood) starts a daemon background worker. A five-second Streamlit
+Begin Mission (or Launch Research Mission on Mission Control) starts a daemon background worker. A five-second Streamlit
 fragment refreshes the timeline and results; worker callbacks never call Streamlit.
 Only one mission can run per dashboard process, including across browser sessions.
 Closing the browser does not stop it, but stopping/restarting Streamlit does.
@@ -36,7 +38,7 @@ labels the most recent historical example and preserves its original read source
 
 ### Architecture and data flow
 
-- `app.py`: five tab renderers, Plotly presentation and a polling fragment.
+- `app.py`: six sidebar pages, Plotly presentation and a polling fragment.
 - `zathura/story.py`: read-only narrative, raw source-cadence counts, vetting plots
   and same-mission scorecards. It never reads benchmark injection labels.
 - `zathura/engine/vetting.py`: five-test screening of un-injected real sources.

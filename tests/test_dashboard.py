@@ -22,13 +22,10 @@ class DashboardTests(unittest.TestCase):
                      "balanced_accuracy_ci_low": 0.6, "balanced_accuracy_ci_high": 0.8,
                      "runtime_s": 3.2, "balanced_accuracy": 0.7, "false_alarm_rate": 0.1,
                      "recovery_rate": 0.5}}]}
-        counts = []
-
-        def columns(n):
-            result = [MagicMock() for _ in range(n)]
+        def columns(n, **kwargs):
+            result = [MagicMock() for _ in range(n if isinstance(n, int) else len(n))]
             for col in result:
                 col.__enter__.return_value = col
-                col.metric.side_effect = lambda label, value: counts.append((label, value))
             return result
 
         ui = MagicMock()
@@ -36,20 +33,21 @@ class DashboardTests(unittest.TestCase):
         ui.button.return_value = False
         worker = MagicMock()
         worker.status.return_value = {"running": False, "iteration": 0, "error": None}
-        with patch.object(app, "st", ui), patch.object(app, "metric") as metric:
+        with patch.object(app, "st", ui), patch.object(app, "metric_cards") as cards:
             app.render_mission(state, worker)
-            self.assertIn(("Stars analyzed", 40), counts)
+            self.assertIn(("Stars analyzed", 40), cards.call_args_list[0].args[0])
             app.render_results(state)
-            self.assertEqual([call.args[0] for call in metric.call_args_list[-4:]],
-                             ["recovery rate", "false alarm rate", "balanced accuracy", "runtime s"])
-            self.assertEqual(metric.call_args_list[-1].args[1], "3.2000")
+            self.assertEqual(cards.call_args.args[0], [
+                ("Recovery rate", "0.5000"), ("False alarm rate", "0.1000"),
+                ("Balanced accuracy", "0.7000"), ("Runtime s", "3.2000")])
             ui.caption.assert_any_call("Balanced accuracy 95% confidence interval: [0.6000, 0.8000]")
             state["baseline"]["provenance"] = {}
+            cards.reset_mock()
             app.render_mission(state, worker)
-            self.assertIn(("Stars analyzed", 0), counts)
+            self.assertIn(("Stars analyzed", 0), cards.call_args_list[0].args[0])
             state["holdout"] = [{"data_source": "placeholder", "measurements": {}}]
             app.render_results(state)
-            self.assertTrue(all(call.args[1] == "—" for call in metric.call_args_list[-4:]))
+            self.assertTrue(all(value == "—" for _, value in cards.call_args.args[0]))
 
     def test_jsonl_missing_partial_and_valid_lines(self):
         with tempfile.TemporaryDirectory() as directory:
