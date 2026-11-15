@@ -66,8 +66,8 @@ detector finds the **catalog period**; it is not independent planet confirmation
   commit `2e679c3`. It was **not** selected by an autonomous AI run. Its holdout numbers were
   computed after it was fixed, but the holdout split has since been viewed repeatedly, so a fresh
   generalization claim for any newly selected config would need a new untouched split.
-- **AI-selected configuration:** none verified yet. No live autonomous run has been executed in
-  this environment (see §8).
+- **AI-selected configuration (live run, §10):** `outlier_sigma` 3.0, other settings unchanged from the baseline.
+  It was selected by the live loop on dev data, but its gain is within noise (see §10).
 
 ## 5. Reproducibility
 
@@ -123,10 +123,11 @@ readable. Nothing needs deleting. To start completely fresh, move the five files
 
 ## 8. Known limitations and blockers
 
-- **Live autonomous run: blocked.** `OPENAI_API_KEY`, `EXA_API_KEY` and `PASTDEV_API_KEY` are not
-  available in the verification environment, so the full live sequence (Exa sources → hypothesis →
-  skeptic → experiment → accept/reject → cross-agent memory → final test) has only been verified
-  in mock mode and by unit tests. No AI-selected configuration is claimed.
+- One bounded live run has been verified (§10). It found no statistically significant improvement, and memory was
+  read but did not demonstrably change a decision in that run.
+- The scientist's hypothesis **text** is rewritten from a template for the parameter the LLM changed
+  (`_ground_prose` in `zathura/agents/scientist.py`), so the prose cannot claim mechanisms for parameters it did not change.
+  The LLM chooses the configuration; the wording shown is not free LLM prose.
 - The candidate config is hand-supplied (see §4), and the holdout split is no longer untouched.
 - One Kepler quarter per star, so periods are limited to 1–10 days; the trapezoid injection model means
   absolute recovery rates are specific to this benchmark.
@@ -149,3 +150,22 @@ readable. Nothing needs deleting. To start completely fresh, move the five files
 - Results only shows the held-out result whose `loop_id` matches the latest run.
 - Narrow screens: the sidebar now collapses (`initial_sidebar_state="auto"` plus a CSS breakpoint at 768 px)
   instead of covering the page.
+
+## 10. Verified live autonomous run (2026-11-14, loop `8e862fba…`)
+
+Services: OpenAI `gpt-4o-mini` (scientist and skeptic), Exa search, past.dev shared memory. Keys were supplied for that
+session only and appear in no file. Before the run, `scripts/check_memory.py` passed: both cross-agent recalls came from
+past.dev, not the local mirror. Sanitized record: `docs/evidence/live-run-2026-11-14.json`.
+
+| Step | What happened |
+|---|---|
+| Start | Baseline config, dev balanced accuracy 0.459 |
+| Exa | Query `Kepler box least squares … detrending period grid`; 3 real sources (Wōtan detrending paper, TLS docs, TLS talk), cited in every round |
+| Round 1 | LLM proposed `outlier_sigma` 5.0 → 3.0; skeptic approved; dev 0.4625 (+0.3 pts, 95% CI −3.1 to +4.1); **kept** (point increase, not significant) |
+| Round 2 | Proposed `period_grid_size` 2000 → 20000; skeptic **rejected** (estimated ~61 s over the 30 s budget); not executed, no metrics recorded |
+| Round 3 | Proposed `period_grid_size` 2000 → 5000 on top of round 1; approved; dev 0.453 (−0.9 pts vs best); **not kept** |
+| Memory | Every round read prior memories (`memory_refs`) and wrote its result to past.dev. Influence recorded as "No evidenced memory-driven change" in all rounds: memory was read but did not change a decision |
+| Final test | Selected config (`outlier_sigma` 3.0), run once on holdout after selection: 0.391 vs baseline 0.384 (+0.6 pts, CI 0.0 to +1.6, **not significant**) |
+
+Conclusion: the live loop worked end to end and reported honestly, but it found no real improvement in 3 rounds.
+The hand-supplied candidate (§4) is much stronger, but it was not produced by the AI.

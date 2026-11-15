@@ -275,6 +275,8 @@ def render_results(state, running=False):
             else:
                 direction = "Lower than" if delta < 0 else "Higher than" if delta > 0 else "Equal to"
                 st.write(f"{direction} the starting score of {measured - delta:.1%} on the same unseen stars.")
+                if delta != 0 and (holdout.get("evaluation_result") or {}).get("significant_vs_baseline") is False:
+                    st.caption("The difference is within noise (not statistically significant).")
             st.caption("A better practice score does not guarantee a better final exam.")
     st.caption(SCORE_NOTE)
 
