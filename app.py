@@ -145,6 +145,10 @@ def service_line():
 
 @st.fragment(run_every=5)
 def topbar(title):
+    st.fragment(run_every=3)(topbar_body)(title)
+
+
+def topbar_body(title):
     status = mission().status()
     label = f"RUNNING · ITERATION {status['iteration']}" if status["running"] else "IDLE"
     demo = os.getenv("ZATHURA_MOCK") == "1" or not os.getenv("OPENAI_API_KEY")
