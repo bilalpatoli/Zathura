@@ -54,6 +54,14 @@ def selected_measurements(view):
     return max([base, *measured], key=lambda m: m.get("balanced_accuracy", float("-inf")))
 
 
+def final_test_within_noise(evaluation):
+    low = evaluation.get("delta_vs_baseline_ci_low")
+    high = evaluation.get("delta_vs_baseline_ci_high")
+    if low is not None and high is not None:
+        return low <= 0 <= high
+    return evaluation.get("significant_vs_baseline") is False
+
+
 def outcome(view, status):
     if status == "running":
         return "running", "Research in progress", "Results update as each round finishes."
@@ -70,7 +78,7 @@ def outcome(view, status):
     delta = evaluation.get("delta")
     if delta is None:
         return "improved", "Improved on development stars", "The final test result was not recorded."
-    if delta != 0 and evaluation.get("significant_vs_baseline") is False:
+    if delta != 0 and final_test_within_noise(evaluation):
         return ("unchanged", "Final-test difference is within noise",
                 "The selected method scored " + ("higher" if delta > 0 else "lower")
                 + " on the final test, but the difference is not statistically significant.")

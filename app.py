@@ -16,7 +16,7 @@ from zathura.engine.data import cache_path, read_curve
 from zathura.engine.detect import search
 from zathura.engine.vetting import vet_candidate, vetting_targets
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
-from zathura.runs import (counts, describe, elapsed, outcome, plain_result, run_list, run_view,
+from zathura.runs import (counts, describe, elapsed, final_test_within_noise, outcome, plain_result, run_list, run_view,
                           selected_measurements)
 from zathura.schema import BASELINE_CONFIG
 from zathura.story import render_how_it_works
@@ -618,8 +618,11 @@ def render_run_results(view, run, status):
             st.dataframe(method_rows(base, view["holdout"]["measurements"]) if base else
                          method_rows(None, view["holdout"]["measurements"]), hide_index=True, width="stretch")
             evaluation = view["holdout"].get("evaluation_result") or {}
-            if evaluation.get("delta") and evaluation.get("significant_vs_baseline") is False:
+            if evaluation.get("delta") and final_test_within_noise(evaluation):
                 st.caption("The difference is within noise (not statistically significant).")
+            elif evaluation.get("delta") and all(evaluation.get(key) is not None for key in
+                                                 ("delta_vs_baseline_ci_low", "delta_vs_baseline_ci_high")):
+                st.caption("The difference is statistically significant.")
         else:
             st.write({"running": "The final test runs when research finishes.",
                       "interrupted": "This run was interrupted before the final test; no held-out result was recorded.",

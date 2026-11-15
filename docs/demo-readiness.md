@@ -29,7 +29,7 @@ ZATHURA_MOCK=1 .venv/bin/python -m pytest -q            # unit + regression test
 ZATHURA_MOCK=1 .venv/bin/python scripts/smoke_dashboard.py
 .venv/bin/python scripts/reproduce.py --config data/candidate_config.json   # exit 0 = PASS
 .venv/bin/python scripts/validate_vetting.py              # screening report, offline
-ZATHURA_MOCK=1 .venv/bin/streamlit run app.py --server.port 8501   # demo mode, no paid calls
+ZATHURA_MOCK=1 .venv/bin/streamlit run app.py --server.port 8501   # mock OpenAI; configured Exa/Past.dev may still be called
 .venv/bin/streamlit run app.py --server.port 8501                  # live mode (keys required)
 ```
 
