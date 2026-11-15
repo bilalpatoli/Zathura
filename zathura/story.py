@@ -1,4 +1,4 @@
-"""A read-only scientific narrative; only Start research invokes the research worker."""
+"""Optional "How it works" walkthrough built from cached observations and recorded runs. It never starts research."""
 import html
 import json
 import re
@@ -21,9 +21,9 @@ def safe(text):
     return html.escape(re.sub(r"\b[0-9a-f]{32}\b", "an earlier experiment", str(text)))
 
 
-def chapter(number, title, text, vocabulary):
-    st.markdown(f'<div class="chapter"><div class="eyebrow">CHAPTER {number}</div>'
-                f'<h2>{title}</h2><p>{text}</p><div class="vocabulary">{vocabulary}</div></div>', unsafe_allow_html=True)
+def chapter(title, text, vocabulary):
+    st.markdown(f'<div class="z-section"><div class="z-h3">{title}</div><div class="z-text">{text}</div>'
+                f'<div class="z-caption">Scientific terms: {vocabulary}</div></div>', unsafe_allow_html=True)
 
 
 def provenance(source):
@@ -99,19 +99,10 @@ def folded_trace(fig, phase, flux, name, color, row=None, col=None):
                             marker=dict(size=4), line=dict(color=color, width=2)), **args)
 
 
-def render_story(state, worker):
-    st.markdown('<div class="eyebrow">REAL PHOTONS. TESTABLE IDEAS. SHARED MEMORY.</div>', unsafe_allow_html=True)
-    st.title("Zathura: An autonomous AI astronomer")
-    st.markdown("### Find patterns in starlight.")
-    st.caption("Explore NASA Kepler observations and let Zathura test better ways to detect planet signals. No planet discoveries are claimed.")
-    rounds = st.slider("Research rounds", 1, 10, DEFAULT_ROUNDS, key="story_iterations", help=ROUNDS_HELP)
-    status = worker.status()
-    if st.button("Start research", type="primary", width="stretch", key="story_begin", disabled=status["running"]):
-        worker.launch(rounds)
-        st.info("Research started. This page updates live; live mode may call paid APIs.")
-    st.caption("Research running" if status["running"] else "Ready · live mode may call paid APIs")
-    if status["error"]:
-        st.error("Research stopped: " + status["error"] + ". Existing observations remain available below.")
+def render_how_it_works(state):
+    st.markdown('<div class="z-title" style="font-size:36px">How it works</div>'
+                '<div class="z-text">How Zathura searches real telescope data, checks what it finds, and tests better detection methods.</div>',
+                unsafe_allow_html=True)
 
     demo = next((t for t in state["targets"] if t["target_id"] == "KIC 6665695"), None)
     curve = candidate = None
@@ -120,7 +111,7 @@ def render_story(state, worker):
             curve, candidate = source_view(demo["target_id"])
         except (ValueError, FileNotFoundError):
             st.info("The demonstration curve is unavailable. Rebuild the committed Kepler cache.")
-    chapter("01", "The Signal", "A distant star sends a nearly steady stream of light. We begin with an actual Kepler quarter, not an artist’s impression.",
+    chapter("Telescope data", "NASA’s Kepler telescope measured each star’s brightness every 30 minutes. This is one real 90-day quarter for Kepler-601.",
             "Space-based differential photometry · PDCSAP flux · ppm precision estimated from point-to-point scatter")
     if curve:
         dev = tuple(t["target_id"] for t in state["targets"] if t.get("role") == "dev")
@@ -142,7 +133,7 @@ def render_story(state, worker):
     else:
         st.info("Cached Kepler data is missing. Restore the data cache to see the signal; research is not required to browse it.")
 
-    chapter("02", "The Shadow", "A crossing companion can briefly dim its star. Aligning repeated dips reveals a pattern that a single passage can hide.",
+    chapter("Finding repeating dips", "When a planet crosses its star, the star dims briefly. Lining up repeated dips reveals a pattern a single dip can hide.",
             "Box Least Squares periodogram · transit depth · orbital period · phase folding")
     if candidate:
         p = candidate["plots"]
@@ -166,11 +157,11 @@ def render_story(state, worker):
             col.metric(label, f"{value:.4f}")
         st.caption("Blind baseline BLS peak on an un-injected, catalogued planet host. A periodic dip alone is not proof of a planet.")
     else:
-        st.info("Restore the cached planet-host curve to reveal the shadow.")
+        st.info("Restore the cached planet-host curve to see the repeating dips.")
 
     chains = proposal_chains(state["latest"])
     latest = chains[-1] if chains else None
-    chapter("03", "The Scientist Thinks", "The Research Scientist reads methods from the literature and proposes one bounded change to the detector. A hypothesis earns its place by being testable—not by sounding convincing.",
+    chapter("The Scientist proposes a change", "The Scientist agent reads published methods and proposes one bounded change to the detector, so its effect can be measured.",
             "Literature-grounded hypothesis generation via Exa neural search")
     if latest:
         proposal = latest["proposal"]
@@ -185,7 +176,7 @@ def render_story(state, worker):
     else:
         st.info("Start research to see an idea grounded in published methods.")
 
-    chapter("04", "The Skeptic Pushes Back", "A second agent challenges the proposal before compute is spent. Approved experiments change one variable on identical development examples; the evaluator—not the debate—decides whether it helped.",
+    chapter("The Skeptic reviews it", "A second agent reviews the proposal before it is tested. Approved changes run on the same development examples, and the measured score decides whether it helped.",
             "Adversarial peer review · controlled single-variable ablation · balanced accuracy")
     if latest:
         debate = measured_chain(chains)
@@ -212,7 +203,7 @@ def render_story(state, worker):
     else:
         st.info("Start research to see the scientific debate and its measured outcome.")
 
-    chapter("05", "It Remembers", "A useful scientist does not start from zero each time. Shared memory can veto a previously unsuccessful direction and change what gets tested next.",
+    chapter("Shared memory", "The agents remember earlier attempts. Shared memory can rule out a direction that already failed and change what gets tested next.",
             "Persistent cross-agent episodic memory on past.dev · author-attributed recall")
     proposal = memory_veto(state["latest"])
     historical = proposal is None
@@ -229,7 +220,7 @@ def render_story(state, worker):
             vetoes = sum(1 for e in state["events"] if memory_loop and e.get("loop_id") == memory_loop and memory_veto([e]))
             heading, count = st.columns([3, 1])
             heading.subheader("Memory changed a decision")
-            count.metric("Verified vetoes · this example’s mission", vetoes)
+            count.metric("Verified vetoes · this example’s run", vetoes)
             left, middle, right = st.columns(3)
             with left:
                 bubble("Wanted to try", config_change(proposal.get("current_best_config"), proposal.get("first_choice_config")), ROSE)
@@ -255,7 +246,7 @@ def render_story(state, worker):
 
 
 def render_finale(state):
-    chapter("FINALE", "Planet or Impostor?", "Not every shadow is a planet. Five transparent checks look for noise, alternating eclipses, a second dip, a pointed shape, or a companion too large to be planetary.",
+    chapter("Planet or another star?", "Not every repeating dip is a planet. Five checks look for noise, alternating eclipses, a second dip, a pointed shape, or a companion too large to be a planet.",
             "Odd–even eclipse test · phase-0.5 secondary eclipse · morphology · radius from transit depth")
     targets = [t for t in vetting_targets() if cache_path(t["kepid"]).exists()]
     if not targets:
@@ -309,7 +300,6 @@ def render_finale(state):
                                   text=counts, texttemplate="%{text}", colorscale=[[0, "#14223b"], [1, "#41636e"]], showscale=False))
         plot(fig, 230)
         st.caption("True catalog class (rows) versus blind screening verdict (columns). Selected convenience sample, not held-out classifier validation. Three planet hosts are falsely flagged as binaries; the long-period Kepler-22 host is inconclusive.")
-    render_scoreboard(state)
 
 
 def render_scoreboard(state):
