@@ -1,5 +1,4 @@
-"""Render all four navigation routes with empty and populated mission records."""
-import re
+"""Render the five-page dashboard with empty and populated mission records."""
 import sys
 import tempfile
 from pathlib import Path
@@ -10,80 +9,58 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from streamlit.testing.v1 import AppTest
 
 import zathura.dashboard as dashboard
+from zathura.runs import run_list, run_view
 from zathura.storage import load_records
-from zathura.engine.vetting import vetting_targets
-from zathura.simple import PITCH
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-PAGES = ["Find", "Improve", "Results", "Technical details"]
+PAGES = ("home_page", "explore_page", "research_page", "how_page", "report_page")
 
 
-def plain(app):
-    assert not app.json and not app.dataframe and not app.table, "Pitch pages must not dump data"
-    text = " ".join(element.value for group in (app.markdown, app.caption, app.info) for element in group)
-    assert not re.search(r"\b[0-9a-f]{32}\b|runtime|confidence interval", text, re.I), text
-
-
-@patch.object(dashboard.Mission, "launch", return_value=True)
-def check(label, launch):
-    app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=90)
-    assert not app.exception, [e.message for e in app.exception]
-    assert [p["page_name"] for p in app._registered_pages.values()] == PAGES
-    assert app.title[0].value == "Find"
-    for page in PAGES:
-        # AppTest.switch_page supports file pages only; use the registered callable route hash.
-        app._page_hash = next(key for key, info in app._registered_pages.items() if info["page_name"] == page)
-        app.run(timeout=90)
-        assert not app.exception, [page, [e.message for e in app.exception]]
-        assert any(PITCH in m.value for m in app.markdown)
-        if page != "Technical details":
-            assert app.title[0].value == page
-            plain(app)
-        if page == "Find":
-            if label == "existing data":
-                assert app.selectbox(key="find_star").value == 6665695
-                assert any(">Planet</div>" in m.value for m in app.markdown)
-                assert len(app.get("plotly_chart")) == 1
-                assert len(app.expander) == 1 and app.expander[0].label == "More checks"
-                binary = next(t["kepid"] for t in vetting_targets() if t["truth"] == "EB")
-                app.selectbox(key="find_star").set_value(binary).run(timeout=90)
-                assert not app.exception
-                assert any("Impostor: two stars" in m.value for m in app.markdown)
-                app.toggle(key="find_raw").set_value(True).run(timeout=90)
-                assert not app.exception and len(app.get("plotly_chart")) == 2
-                plain(app)
-                print(f"PASS {label}: Find · planet, two stars, extra checks and original brightness")
-            else:
-                assert not app.get("plotly_chart")
-        elif page == "Improve":
-            launch.reset_mock()
-            app.button(key="simple_start").click().run(timeout=90)
-            assert not app.exception
-            launch.assert_called_once_with(3)
-            plain(app)
-            print(f"PASS {label}: Start AI research invokes the existing worker")
-        elif page == "Results":
-            assert len(app.get("plotly_chart")) == (1 if label == "existing data" else 0)
-            assert len(app.metric) == (1 if label == "existing data" else 0)
-        else:
-            assert [tab.label for tab in app.tabs] == ["Mission Control", "Planet Detection", "Timeline",
-                "Experimental Results", "Sponsor Evidence", "Vetting validation", "Research Story"]
-            for title in ("The Signal", "The Shadow", "The Scientist Thinks", "The Skeptic Pushes Back", "It Remembers", "Planet or Impostor?"):
-                assert any(title in m.value for m in app.markdown), title
-            assert sum("Benchmark transits are synthetic injections into real Kepler photometry" in c.value
-                       for c in app.caption) >= 5
-            assert any(h.value == "Vetting confusion table" for h in app.subheader)
-            if label == "existing data":
-                assert any(e.label == "Source photometry and BLS periodogram" for e in app.expander)
-            launch.reset_mock()
-            app.button(key="story_begin").click().run(timeout=90)
-            assert not app.exception
-            launch.assert_called_once_with(3)
-            assert not app.json
-        print(f"PASS {label}: {page}")
-    print(f"PASS {label}: all four sidebar routes; no render exceptions")
+def check(label):
+    with patch.object(dashboard.Mission, "launch", return_value=True) as launch:
+        app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=90)
+        if app.exception:
+            raise AssertionError([e.message for e in app.exception])
+        assert any("An AI scientist searching for planets." in m.value for m in app.markdown)
+        assert not app.tabs
+        launch.assert_not_called()
+        print(f"PASS {label}: Home renders without starting research")
+        plots = 0
+        for page in PAGES:
+            script = (f"import sys; sys.path.insert(0, {str(ROOT)!r}); import app; app.setup(); app.build_pages(); app.{page}()")
+            page_app = AppTest.from_string(script).run(timeout=90)
+            if page_app.exception:
+                raise AssertionError([page, [e.message for e in page_app.exception]])
+            plots += len(page_app.get("plotly_chart"))
+            if page == "explore_page" and label == "existing data":
+                select = page_app.selectbox(key="explore_target")
+                assert any("known eclipsing binary" in option for option in select.options)
+                select.select("KIC 10661783").run(timeout=90)
+                assert not page_app.exception
+                assert any("Known eclipsing binary" in m.value for m in page_app.markdown)
+                assert len(page_app.get("plotly_chart")) == 4
+                print(f"PASS {label}: Explore includes labelled EB, source photometry and BLS charts")
+            if page == "research_page" and label == "existing data":
+                state = dashboard.snapshot()
+                for run in run_list(state["events"]):
+                    view = run_view(state, run["loop_id"])
+                    if (view["baseline"] or {}).get("data_source") == "placeholder":
+                        page_app.selectbox(key="research_run").select(run["loop_id"]).run(timeout=90)
+                        assert not page_app.exception
+                        assert any("Stand-in engine (placeholder) run" in w.value for w in page_app.warning)
+                        assert not any("Benchmark transits are synthetic injections" in c.value for c in page_app.caption)
+                        print(f"PASS {label}: historical placeholder run is labelled honestly")
+                        break
+            if page == "research_page" and label == "empty data":
+                page_app.button(key="research_start").click().run(timeout=90)
+                assert not page_app.exception
+                launch.assert_called_once_with(dashboard.DEFAULT_ROUNDS)
+                print(f"PASS {label}: Start research launches {dashboard.DEFAULT_ROUNDS} rounds only on click")
+            print(f"PASS {label}: {page}")
+        launch.assert_called_once() if label == "empty data" else launch.assert_not_called()
+    print(f"PASS {label}: {plots} plots; no render exceptions")
 
 
 def main():

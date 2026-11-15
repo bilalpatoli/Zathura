@@ -10,6 +10,8 @@ from zathura.engine import cached_targets
 from zathura.orchestrator import run_research_loop
 
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_ROUNDS = 3
+ROUNDS_HELP = "Each round proposes an improvement, reviews it, and tests it if approved."
 
 
 def read_jsonl(path):
@@ -55,11 +57,12 @@ class Mission:
         self.lock = threading.Lock()
         self.running = False
         self.iteration = 0
+        self.rounds = 0
         self.error = None
 
     def status(self):
         with self.lock:
-            return {"running": self.running, "iteration": self.iteration, "error": self.error}
+            return {"running": self.running, "iteration": self.iteration, "rounds": self.rounds, "error": self.error}
 
     def on_event(self, event):
         with self.lock:
@@ -69,7 +72,7 @@ class Mission:
         with self.lock:
             if self.running:
                 return False
-            self.running, self.iteration, self.error = True, 0, None
+            self.running, self.iteration, self.rounds, self.error = True, 0, iterations, None
         threading.Thread(target=self._run, args=(iterations,), daemon=True, name="zathura-mission").start()
         return True
 
