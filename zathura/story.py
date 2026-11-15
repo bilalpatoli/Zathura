@@ -1,4 +1,4 @@
-"""A read-only scientific narrative; only Begin Mission invokes the research worker."""
+"""A read-only scientific narrative; only Start research invokes the research worker."""
 import html
 import json
 import re
@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
+from zathura.dashboard import DEFAULT_ROUNDS, ROUNDS_HELP
 from zathura.engine import get_lightcurve
 from zathura.engine.data import ROOT, cache_path
 from zathura.engine.vetting import VERDICTS, vet_candidate, vetting_targets
@@ -101,16 +102,16 @@ def folded_trace(fig, phase, flux, name, color, row=None, col=None):
 def render_story(state, worker):
     st.markdown('<div class="eyebrow">REAL PHOTONS. TESTABLE IDEAS. SHARED MEMORY.</div>', unsafe_allow_html=True)
     st.title("Zathura: An autonomous AI astronomer")
-    st.markdown("### A faint shadow. A scientific argument. A memory that changes the next experiment.")
-    st.caption("Real NASA Kepler light curves. Live AI research. Transparent limitations. No planet discoveries claimed.")
-    iterations = st.slider("Mission length · research iterations", 1, 10, 3, key="story_iterations")
+    st.markdown("### Find patterns in starlight.")
+    st.caption("Explore NASA Kepler observations and let Zathura test better ways to detect planet signals. No planet discoveries are claimed.")
+    rounds = st.slider("Research rounds", 1, 10, DEFAULT_ROUNDS, key="story_iterations", help=ROUNDS_HELP)
     status = worker.status()
-    if st.button("Begin Mission", type="primary", width="stretch", key="story_begin", disabled=status["running"]):
-        worker.launch(iterations)
-        st.info("Mission launched. This story updates live; API calls may incur charges.")
-    st.caption("Research running" if status["running"] else "Ready to research · live API calls may incur charges")
+    if st.button("Start research", type="primary", width="stretch", key="story_begin", disabled=status["running"]):
+        worker.launch(rounds)
+        st.info("Research started. This page updates live; live mode may call paid APIs.")
+    st.caption("Research running" if status["running"] else "Ready · live mode may call paid APIs")
     if status["error"]:
-        st.error("Mission stopped: " + status["error"] + ". Existing observations remain available below.")
+        st.error("Research stopped: " + status["error"] + ". Existing observations remain available below.")
 
     demo = next((t for t in state["targets"] if t["target_id"] == "KIC 6665695"), None)
     curve = candidate = None
@@ -139,7 +140,7 @@ def render_story(state, worker):
             st.metric("Point-to-point scatter · ppm", f"{scatter:.1f}")
         st.caption(f"Kepler-601 · quarter {curve['quarter']} · {np.ptp(curve['time']):.2f} days. Source cadences precede detector clipping; scatter is MAD of flux differences / √2, not a red-noise precision guarantee. Benchmark injections use separate quiet stars.")
     else:
-        st.info("Cached Kepler data is missing. Restore the data cache to see the signal; a mission is not required to browse it.")
+        st.info("Cached Kepler data is missing. Restore the data cache to see the signal; research is not required to browse it.")
 
     chapter("02", "The Shadow", "A crossing companion can briefly dim its star. Aligning repeated dips reveals a pattern that a single passage can hide.",
             "Box Least Squares periodogram · transit depth · orbital period · phase folding")
@@ -182,7 +183,7 @@ def render_story(state, worker):
         with right:
             st.metric("Sources cited", len(sources))
     else:
-        st.info("Launch a mission to see a literature-grounded hypothesis.")
+        st.info("Start research to see an idea grounded in published methods.")
 
     chapter("04", "The Skeptic Pushes Back", "A second agent challenges the proposal before compute is spent. Approved experiments change one variable on identical development examples; the evaluator—not the debate—decides whether it helped.",
             "Adversarial peer review · controlled single-variable ablation · balanced accuracy")
@@ -190,7 +191,7 @@ def render_story(state, worker):
         debate = measured_chain(chains)
         proposal, completion = debate["proposal"], debate["completion"]
         if debate is not latest:
-            st.caption(f"Most recent measured experiment · iteration {proposal.get('iteration', '?')}. The newer proposal has no measurement; it is not assigned a score.")
+            st.caption(f"Most recent measured experiment · round {proposal.get('iteration', '?')}. The newer proposal has no measurement; it is not assigned a score.")
         reviews = [e["payload"] for e in state["latest"] if e.get("step") == ("review_revision" if debate["revision"] else "review")
                    and e["payload"].get("iteration") == proposal.get("iteration")]
         left, right = st.columns(2)
@@ -209,7 +210,7 @@ def render_story(state, worker):
         else:
             st.info("No experiment measurement yet. Rejected proposals are not assigned fabricated scores.")
     else:
-        st.info("Launch a mission to see the scientific debate and its measured outcome.")
+        st.info("Start research to see the scientific debate and its measured outcome.")
 
     chapter("05", "It Remembers", "A useful scientist does not start from zero each time. Shared memory can veto a previously unsuccessful direction and change what gets tested next.",
             "Persistent cross-agent episodic memory on past.dev · author-attributed recall")
@@ -218,7 +219,7 @@ def render_story(state, worker):
     proposal = proposal or memory_veto(state["events"])
     if proposal:
         if historical:
-            st.info("No verified memory veto occurred in the latest mission. This is the most recent recorded example from an earlier mission; its original read source is shown below.")
+            st.info("No verified memory veto occurred in the latest run. This is the most recent recorded example from an earlier run; its original read source is shown below.")
         memory_id = proposal["memory_influence"]["memory_ids"][0]
         entry = next((m for m in state["memories"] if m["memory_id"] == memory_id), {})
         receipt = next((r for r in proposal.get("memory_reads", []) if r["memory_id"] == memory_id), {})
@@ -248,7 +249,7 @@ def render_story(state, worker):
             if receipt.get("fallback_reason"):
                 st.caption("Mirror fallback after remote " + receipt["fallback_reason"])
     else:
-        st.info("Launch a mission to see whether recalled evidence changes a decision. No verified memory veto is recorded for this mission yet.")
+        st.info("Start research to see whether recalled evidence changes a decision. No verified memory veto is recorded for this run yet.")
 
     render_finale(state)
 
@@ -315,7 +316,7 @@ def render_scoreboard(state):
     st.subheader("The scoreboard · measured, not imagined")
     baseline = state.get("baseline")
     if not baseline:
-        st.info("Launch a mission to see development and blind held-out performance.")
+        st.info("Start research to see development results and the final test on unseen stars.")
         return
     base = baseline["measurements"].get("balanced_accuracy")
     values = [r["measurements"]["balanced_accuracy"] for r in state["current"] if r.get("measurements")]

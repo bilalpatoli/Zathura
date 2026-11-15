@@ -24,8 +24,8 @@ def check(label):
     with patch.object(dashboard.Mission, "launch", return_value=True) as launch:
         app.button(key="story_begin").click().run(timeout=90)
         assert not app.exception
-        launch.assert_called_once_with(3)
-    print(f"PASS {label}: Begin Mission invokes the existing worker")
+        launch.assert_called_once_with(dashboard.DEFAULT_ROUNDS)
+    print(f"PASS {label}: Start research invokes the existing worker")
     for title in ("The Signal", "The Shadow", "The Scientist Thinks", "The Skeptic Pushes Back", "It Remembers", "Planet or Impostor?"):
         assert any(title in markdown.value for markdown in app.markdown), title
         print(f"PASS {label}: story · {title}")

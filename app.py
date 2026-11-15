@@ -9,7 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from zathura.dashboard import Mission, snapshot
+from zathura.dashboard import DEFAULT_ROUNDS, ROUNDS_HELP, Mission, snapshot
 from zathura.engine import inspect_target
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
 from zathura.story import render_story
@@ -139,12 +139,24 @@ def service_line():
     return f"OpenAI: {openai} &nbsp;·&nbsp; Exa: {exa} &nbsp;·&nbsp; past.dev: {pastdev}"
 
 
+def demo_mode():
+    return os.getenv("ZATHURA_MOCK") == "1" or not os.getenv("OPENAI_API_KEY")
+
+
+def status_label(status):
+    if not status["running"]:
+        return "Ready"
+    if not status["iteration"]:
+        return "Starting research"
+    return f"Running · round {status['iteration']} of {status['rounds']}" if status.get("rounds") else f"Running · round {status['iteration']}"
+
+
 @st.fragment(run_every=5)
 def topbar(title):
     status = mission().status()
-    label = f"RUNNING · ITERATION {status['iteration']}" if status["running"] else "IDLE"
+    demo = '<div class="z-pill demo">Demo mode</div>' if demo_mode() else ""
     html_block(f'<div class="z-topbar"><div class="z-crumb">{icon("home", 20, 1.5)}{icon("chevron", 15, 1.8)}<span>{title}</span></div>'
-               f'<div class="z-status"><div class="z-pill{" running" if status["running"] else ""}"><i></i>{label}</div>'
+               f'<div class="z-status">{demo}<div class="z-pill{" running" if status["running"] else ""}"><i></i>{status_label(status)}</div>'
                f'<div class="z-divider"></div></div></div>')
 
 
@@ -164,50 +176,50 @@ def render_mission(state, worker):
     metric_cards([("Stars analyzed", analyzed), ("Experiments run", sum(bool(r["measurements"]) for r in records)),
                   ("Accepted improvements", sum(r["accepted"] for r in records)),
                   ("Reviewer rejections", sum(r["reviewer_decision"]["decision"] != "approve" for r in records))])
-    html_block(f'<div class="z-banner">{icon("info", 20, 1.6)}<span>Synthetic transit injections are used for benchmarks. Metrics show the latest mission only.</span></div>')
+    html_block(f'<div class="z-banner">{icon("info", 20, 1.6)}<span>Research tests methods on simulated transits added to real Kepler observations. Counts show the latest run only.</span></div>')
     baseline = state["baseline"]
     if baseline:
         base = baseline["measurements"]["balanced_accuracy"]
         best = max([base] + [r["measurements"]["balanced_accuracy"] for r in state["current"] if r["measurements"]])
         badge(baseline.get("data_source"))
-        metric_cards([("Baseline dev balanced accuracy", f"{base:.4f}"), ("Best dev balanced accuracy", f"{best:.4f}")], compact=True)
+        metric_cards([("Starting method · balanced accuracy", f"{base:.4f}"), ("Best method found · balanced accuracy", f"{best:.4f}")], compact=True)
     status = worker.status()
     left, right = st.columns([627, 617], gap="small")
     with left, st.container(key="card-hypothesis", height="stretch"):
-        card_title("Current hypothesis")
+        card_title("Current idea")
         hypothesis = next((e["payload"].get("hypothesis") for e in reversed(state["latest"])
                            if e.get("step") in ("hypothesis", "revision")), None)
         if hypothesis:
             st.write(hypothesis)
         else:
-            empty_state("file", lead="Awaiting a research proposal", size=49, height=180, pad=35, gap=20)
+            empty_state("file", lead="Ideas will appear when research starts.", size=49, height=180, pad=35, gap=20)
     with right, st.container(key="card-mission", height="stretch"):
-        card_title("Research mission")
-        iterations = st.selectbox("Research iterations", list(range(1, 11)), index=3, width=254, disabled=status["running"])
-        if st.button("Launch research mission", type="primary", disabled=status["running"]):
-            if worker.launch(iterations):
-                st.toast("Mission launched in a background worker.")
+        card_title("Run research")
+        rounds = st.selectbox("Research rounds", list(range(1, 11)), index=DEFAULT_ROUNDS - 1, width=254, disabled=status["running"])
+        if st.button("Start research", type="primary", disabled=status["running"]):
+            if worker.launch(rounds):
+                st.toast("Research started.")
         if status["error"]:
-            st.error(f"Mission stopped: {status['error']}. Check service availability and the event timeline.")
-        html_block('<div class="z-caption z-launch-note">Launch may call paid APIs when configured. One mission per dashboard '
-                   'process; keep this process alive.</div>')
+            st.error(f"Research stopped: {status['error']}. Check service availability and the activity log.")
+        cost = "Demo mode uses recorded responses, so nothing is charged." if demo_mode() else "Live mode may call paid APIs."
+        html_block(f'<div class="z-caption z-launch-note">{ROUNDS_HELP} {cost}</div>')
     left, right = st.columns([627, 617], gap="small")
     with left, st.container(key="card-activity", height="stretch"):
-        card_title("Mission activity")
+        card_title("Activity")
         if state["latest"]:
             rows = "".join(f"<div>{icon('clock', 18)}<span>{event_summary(e)}</span></div>" for e in state["latest"][-5:][::-1])
             html_block(f'<div class="z-list" style="font-size:15px;gap:12px">{rows}</div>')
         else:
-            empty_state("clock", lead="No mission events yet", size=42, height=110, pad=13, gap=14)
+            empty_state("clock", lead="Activity will appear when research starts.", size=42, height=110, pad=13, gap=14)
     with right, st.container(key="card-provenance", height="stretch"):
-        card_title("Data provenance")
+        card_title("Data sources")
         html_block(f'<div class="z-list"><div>{icon("database", 24)}<span>Kepler · {len(state["targets"])} cached source curves</span></div>'
                    f'<div>{icon("code", 24)}<span>{service_line()}</span></div></div>')
 
 
 def render_planets(state):
-    page_header("Planet Detection", text="Read-only diagnostic of un-injected Kepler curves using the baseline detector. "
-                                         "Not benchmark recovery truth.", title_size=35, offset=-4, text_gap=-2)
+    page_header("Planet Detection", text="Real Kepler observations analyzed with the starting detector. "
+                                         "No simulated transits are added here.", title_size=35, offset=-4, text_gap=-2)
     if not state["targets"]:
         st.info("No cached light curves. Rebuild them with scripts/build_catalog.py.")
         return
@@ -223,11 +235,12 @@ def render_planets(state):
     source = curve["data_source"]
     simulated = "synthetic" in curve["curve_origin"].lower()
     if curve.get("known_periods"):
-        periods = ", ".join(f"{p:.4f}" for p in curve["known_periods"])
-        banner = ("Known-planet validation", f"Known-planet validation star &nbsp;·&nbsp; KOI periods: {periods} days.")
+        periods = ", ".join(f"{p:.2f}" for p in curve["known_periods"])
+        plural = "planets orbit" if len(curve["known_periods"]) > 1 else "a planet orbits"
+        banner = ("Catalog: known planet", f"NASA lists {plural} this star every {periods} days.")
         link = ("NASA Exoplanet Archive", "https://exoplanetarchive.ipac.caltech.edu/")
     else:
-        banner = ("Benchmark host star", "No KOI or TCE; not certified planet-free.")
+        banner = ("Catalog: no known planet", "No planet candidates are listed; not proven planet-free.")
         link = ("MAST Kepler archive", "https://archive.stsci.edu/missions-and-data/kepler")
     origin = "SIMULATED source curve — not NASA observations." if simulated else "Real source data."
     left, right = st.columns([831, 418], gap="medium")
@@ -238,33 +251,34 @@ def render_planets(state):
         html_block(f'<div class="z-source" title="Curve origin: {html.escape(curve["curve_origin"])}">Data source<br>'
                    f'<a href="{link[1]}" target="_blank">{link[0]}</a> &nbsp;·&nbsp; {origin}</div>')
     badge(source)
-    html_block(f'<div class="z-h3" style="margin:10px 0 -10px">{"Unverified transit candidate" if curve["detected"] else "No threshold-crossing candidate"}</div>'
-               + ("" if curve["detected"] else '<div class="z-caption">Showing the strongest BLS peak only.</div>'))
-    metric_cards([(label, f"{value:.4f}") for label, value in zip(
-        ["Estimated period (days)", "Depth (ppm)", "Duration (days)", "Peak SDE"],
-        [curve["period_days"], curve["depth"] * 1e6, curve["duration_days"], curve["sde"]])], compact=True)
+    finding = "This analysis: possible transit signal" if curve["detected"] else "This analysis: no signal above the detection threshold"
+    html_block(f'<div class="z-h3" style="margin:10px 0 -10px">{finding}</div>'
+               + ("" if curve["detected"] else '<div class="z-caption">Showing the strongest repeating dip only.</div>'))
+    metric_cards([("Repeats every", f"{curve['period_days']:.2f} days"), ("Brightness drops", f"{curve['depth'] * 100:.3f}%"),
+                  ("Dip lasts", f"{curve['duration_days'] * 24:.1f} hours"), ("Detection score (SDE)", f"{curve['sde']:.1f}")],
+                 compact=True)
     mask = curve["in_transit"]
-    fig = go.Figure(go.Scattergl(x=curve["time"], y=curve["flat_flux"], mode="markers", name="Flattened",
+    fig = go.Figure(go.Scattergl(x=curve["time"], y=curve["flat_flux"], mode="markers", name="Brightness",
                                  marker=dict(size=3, color="#0ae4ea")))
     fig.add_trace(go.Scattergl(x=curve["time"][mask], y=curve["flat_flux"][mask], mode="markers",
-                               name="Peak transit windows<br>(unverified)", marker=dict(size=5, color="#ad7dee")))
-    chart_card("curve", "Processed light curve &nbsp;·&nbsp; strongest-peak transit windows highlighted",
+                               name="Strongest dips<br>(unverified)", marker=dict(size=5, color="#ad7dee")))
+    chart_card("curve", "Star brightness over time &nbsp;·&nbsp; strongest repeating dips highlighted",
                style_figure(fig, 193, "Time (days)", legend=True), source)
     fold = go.Figure(go.Scattergl(x=curve["phase"], y=curve["flat_flux"], mode="markers", marker=dict(size=3, color="#0ae4ea")))
     pad = 0.02 * (curve["phase"].max() - curve["phase"].min())
     fold.update_xaxes(range=[curve["phase"].min() - pad, curve["phase"].max() + pad])
-    chart_card("fold", "Phase-folded light curve &nbsp;·&nbsp; days from peak transit center",
-               style_figure(fold, 193, "Phase (days)"), source)
+    chart_card("fold", "Repeated dips lined up &nbsp;·&nbsp; lining up each dip makes the pattern easier to see",
+               style_figure(fold, 193, "Days from dip center"), source)
 
 
 def render_events(state):
     if not state["latest"]:
-        st.info("No mission events yet.")
+        st.info("Activity will appear when research starts.")
         return
     for chain in proposal_chains(state["latest"]):
         proposal, completion = chain["proposal"], chain["completion"]
         iteration = proposal.get("iteration", "?")
-        with st.expander(f"Iteration {iteration}{' · revision' if chain['revision'] else ''} · {change_label(proposal)}", expanded=not chain["superseded"]):
+        with st.expander(f"Round {iteration}{' · revision' if chain['revision'] else ''} · {change_label(proposal)}", expanded=not chain["superseded"]):
             st.markdown("**Scientist · research & hypothesis**")
             st.write(proposal.get("hypothesis", "Hypothesis not recorded"))
             if proposal.get("memory_influence", {}).get("memory_ids"):
@@ -287,20 +301,20 @@ def render_events(state):
                 st.caption("Awaiting review or execution. If the mission failed, inspect the status below.")
     for event in state["latest"]:
         if event.get("step") == "error":
-            st.error(f"Iteration {event['payload'].get('iteration', '?')} stopped: {event['payload'].get('error_type', 'Unknown error')}")
+            st.error(f"Round {event['payload'].get('iteration', '?')} stopped: {event['payload'].get('error_type', 'Unknown error')}")
 
 
 def render_timeline(state):
-    page_header("AI Research Timeline", "Latest mission • live event log • proposals and critiques are not measured discoveries.",
+    page_header("AI Research Timeline", "Latest research run • live activity • proposals and reviews are ideas, not measured results.",
                 subtitle_size=18, offset=2)
     with st.container(key="card-timeline"):
-        card_title("Mission activity")
+        card_title("Activity")
         if state["latest"]:
             render_events(state)
         else:
-            empty_state("clock", lead="No mission events yet.", size=48, height=222, pad=57, gap=17)
+            empty_state("clock", lead="Activity will appear when research starts.", size=48, height=222, pad=57, gap=17)
     with st.container(key="card-memory"):
-        card_title("Shared research memory", "Recorded Scientist and Skeptic exchanges for the latest mission.")
+        card_title("Shared research memory", "What the Scientist and Skeptic shared with each other in the latest run.")
         activity = memory_activity(state["latest"], state["memories"])
         if activity:
             st.dataframe(pd.DataFrame(activity), hide_index=True, width="stretch")
@@ -310,7 +324,7 @@ def render_timeline(state):
 
 
 def render_sponsors(state):
-    page_header("Sponsor Evidence", text="Recorded provenance · latest mission · browsing triggers no remote requests.")
+    page_header("Sponsor Evidence", text="Recorded provenance · latest run · browsing triggers no remote requests.")
     chains = proposal_chains(state["latest"])
     authors = {m["memory_id"]: m["agent_id"] for m in state["memories"]}
     left, right = st.columns(2)
@@ -319,10 +333,10 @@ def render_sponsors(state):
         st.caption("Exact SDK call · Exa.search_and_contents")
         st.code("zathura/agents/exa_search.py:search_papers", language=None)
         if not chains:
-            st.info("Launch a mission to record search queries and citation chains.")
+            st.info("Start research to record search queries and citation chains.")
         for index, chain in enumerate(chains):
             proposal, completion = chain["proposal"], chain["completion"]
-            with st.expander(f"Iteration {proposal.get('iteration', '?')}{' · revision' if chain['revision'] else ''} · source → result", expanded=index == 0):
+            with st.expander(f"Round {proposal.get('iteration', '?')}{' · revision' if chain['revision'] else ''} · source → result", expanded=index == 0):
                 search = proposal.get("literature_search", {})
                 st.caption("Exact query sent to Exa")
                 st.write(search.get("query", "Not recorded in this legacy event"))
@@ -357,18 +371,18 @@ def render_sponsors(state):
             if recall:
                 who = AGENT_NAMES.get(event.get("agent"), "Agent")
                 via = TRANSPORT_NAMES.get(recall.get("read_via"), "Not recorded")
-                st.caption(f"{who} · iteration {payload.get('iteration', '?')} · recall via {via} · {recall['returned_count']} returned before evidence filtering")
+                st.caption(f"{who} · round {payload.get('iteration', '?')} · recall via {via} · {recall['returned_count']} returned before evidence filtering")
                 if recall.get("fallback_reason"):
                     st.caption("Remote failure · " + recall["fallback_reason"])
         changes = [c["proposal"] for c in chains if c["proposal"].get("memory_influence", {}).get("memory_ids")]
         if not changes:
-            st.info("No memory-driven decision change recorded for this mission.")
+            st.info("No memory-driven decision change recorded for this run.")
         for proposal in changes:
             influence = proposal["memory_influence"]
             verified = influence.get("explanation", "").startswith("Deterministic memory veto")
             with st.container(border=True):
                 st.warning("Memory changed a decision" if verified else "Model-reported influence · UNVERIFIED")
-                st.caption(f"Iteration {proposal.get('iteration', '?')} · evidence-backed veto" if verified else "Not proof of a causal veto")
+                st.caption(f"Round {proposal.get('iteration', '?')} · evidence-backed veto" if verified else "Not proof of a causal veto")
                 st.write("Before · " + config_change(proposal.get("current_best_config"), proposal.get("first_choice_config")))
                 st.write("After · " + change_label(proposal))
                 reads = {r["memory_id"]: r for r in proposal.get("memory_reads", [])}
@@ -399,21 +413,21 @@ def render_sponsors(state):
 
 
 def render_results(state, mission_page=None):
-    page_header("Experimental Results", "Latest mission comparisons and held-out evaluation for transit research.",
-                "Rejected hypotheses remain visible with missing metrics.", subtitle_size=19, offset=3)
+    page_header("Experimental Results", "Did the changes help? Development results first, then the final test.",
+                "Rejected ideas stay listed without scores.", subtitle_size=19, offset=3)
     rows = []
     baseline = state["baseline"]
     if baseline:
-        rows.append({"label": "Baseline", "decision": "baseline", "data_source": baseline["data_source"], **baseline["measurements"]})
+        rows.append({"label": "Starting method", "decision": "baseline", "data_source": baseline["data_source"], **baseline["measurements"]})
     for i, record in enumerate(state["current"], 1):
         rows.append({"label": f"Experiment {i}", "decision": record["reviewer_decision"]["decision"],
                      "data_source": record["data_source"], **record["measurements"]})
     measured = [r for r in rows if "balanced_accuracy" in r]
     with st.container(key="card-comparisons"):
-        card_title("Latest mission comparisons", "Compare recent mission runs and hypothesis variants using benchmark metrics.")
+        card_title("Development results", "Each change is measured on the same development stars as the starting method.")
         if measured:
             best = max(measured, key=lambda r: r["balanced_accuracy"])
-            rows.append(best | {"label": "Best config"})
+            rows.append(best | {"label": "Best method"})
             frame = pd.DataFrame(rows)
             frame["data_source"] = frame["data_source"].replace({"placeholder": "PLACEHOLDER engine"})
             fields = {"label": "Run", "decision": "Review", "data_source": "Source", "balanced_accuracy": "Balanced accuracy",
@@ -433,18 +447,18 @@ def render_results(state, mission_page=None):
                     chart_card(f"results-{field}", fields[field], style_figure(fig, 260, legend=True), source)
         else:
             empty_state("clipboard", strong="No measured results yet.",
-                        sub="Run a mission to compare hypotheses and view benchmark metrics here.", size=62, height=150, pad=2, gap=10, sub_gap=2)
+                        sub="Start research to compare methods here.", size=62, height=150, pad=2, gap=10, sub_gap=2)
             with st.container(horizontal_alignment="center", key="launch-row"):
-                if st.button("Launch research mission", type="primary", key="results-launch") and mission_page:
+                if st.button("Start research", type="primary", key="results-launch") and mission_page:
                     st.switch_page(mission_page)
     with st.container(key="card-holdout"):
-        card_title("Held-out test performance", "Evaluate final hypotheses on a held-out test set (not used for tuning).")
+        card_title("Final test", "Tested on stars that weren't used to choose the settings.")
         if not state["holdout"]:
-            empty_state("flask", strong="No held-out result yet.", sub="Held-out runs appear here after a mission finishes.",
+            empty_state("flask", strong="No final test yet.", sub="The final test runs when research finishes.",
                         size=58, height=137, pad=0, gap=4, sub_gap=2)
         else:
             result = state["holdout"][-1]
-            st.caption(f"Latest completed holdout · loop {result.get('loop_id', 'unknown')} · {result.get('timestamp', '')}")
+            st.caption(f"Latest final test · run {result.get('loop_id', 'unknown')} · {result.get('timestamp', '')}")
             badge(result.get("data_source"))
             measurements = result["measurements"]
             fields = ("recovery_rate", "false_alarm_rate", "balanced_accuracy", "runtime_s")
@@ -454,17 +468,17 @@ def render_results(state, mission_page=None):
             low, high = (measurements.get(key) for key in ("balanced_accuracy_ci_low", "balanced_accuracy_ci_high"))
             if low is not None and high is not None:
                 st.caption(f"Balanced accuracy 95% confidence interval: [{low:.4f}, {high:.4f}]")
-    with st.container(key="stored"), st.expander("Stored hypotheses"):
+    with st.container(key="stored"), st.expander("All past ideas"):
         archived = [{"Hypothesis": r["hypothesis"], "Review": r["reviewer_decision"]["decision"],
                      "Balanced accuracy": r["measurements"].get("balanced_accuracy"),
                      "Source": "PLACEHOLDER engine" if r["data_source"] == "placeholder" else r["data_source"]}
                     for r in state["records"][-50:]]
-        st.caption("Most recent 50 archived hypotheses · not a cross-benchmark leaderboard")
+        st.caption("Most recent 50 ideas · scores may come from older benchmark versions, so don't rank them against each other")
         if archived:
             st.dataframe(pd.DataFrame(archived), hide_index=True, width="stretch")
 
         else:
-            st.write("No stored hypotheses yet.")
+            st.write("No past ideas yet.")
 
 
 def live(render):

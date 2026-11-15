@@ -87,7 +87,7 @@ class DashboardTests(unittest.TestCase):
             finish.set()
             for thread in threads:
                 thread.join(5)
-        self.assertEqual(worker.status(), {"running": False, "iteration": 1, "error": "RuntimeError"})
+        self.assertEqual(worker.status(), {"running": False, "iteration": 1, "rounds": 2, "error": "RuntimeError"})
 
     def test_cached_targets_empty_without_catalog(self):
         with tempfile.TemporaryDirectory() as directory, \
