@@ -1,0 +1,15 @@
+Integration validation: macOS arm64, Python 3.10.12, requirements.lock
+Exit status: 1 (canonical truth hashes differ from Linux reference)
+No live service calls were made.
+
+baseline  dev     {"recovery_rate": 0.39375, "false_alarm_rate": 0.475, "balanced_accuracy": 0.45937500000000003, "balanced_accuracy_ci_low": 0.3375, "balanced_accuracy_ci_high": 0.571875, "harmonic_rate": 0.0375, "positive_count": 160.0, "negative_count": 40.0, "recovery_snr_5_8": 0.12, "recovery_snr_8_12": 0.34210526315789475, "recovery_snr_12_18": 0.6341463414634146, "recovery_snr_18_25": 0.5806451612903226}
+baseline  holdout {"recovery_rate": 0.31875, "false_alarm_rate": 0.55, "balanced_accuracy": 0.384375, "balanced_accuracy_ci_low": 0.271796875, "balanced_accuracy_ci_high": 0.5, "harmonic_rate": 0.03125, "positive_count": 160.0, "negative_count": 40.0, "recovery_snr_5_8": 0.0, "recovery_snr_8_12": 0.19047619047619047, "recovery_snr_12_18": 0.5714285714285714, "recovery_snr_18_25": 0.5757575757575758}
+baseline  known planets recovered 12/16; deterministic=True
+candidate dev     {"recovery_rate": 0.4625, "false_alarm_rate": 0.025, "balanced_accuracy": 0.71875, "balanced_accuracy_ci_low": 0.665625, "balanced_accuracy_ci_high": 0.771875, "harmonic_rate": 0.0, "positive_count": 160.0, "negative_count": 40.0, "recovery_snr_5_8": 0.08, "recovery_snr_8_12": 0.3157894736842105, "recovery_snr_12_18": 0.8048780487804879, "recovery_snr_18_25": 0.8064516129032258}
+candidate holdout {"recovery_rate": 0.4125, "false_alarm_rate": 0.125, "balanced_accuracy": 0.64375, "balanced_accuracy_ci_low": 0.5561718749999999, "balanced_accuracy_ci_high": 0.721875, "harmonic_rate": 0.0125, "positive_count": 160.0, "negative_count": 40.0, "recovery_snr_5_8": 0.0, "recovery_snr_8_12": 0.2619047619047619, "recovery_snr_12_18": 0.6904761904761905, "recovery_snr_18_25": 0.7878787878787878}
+candidate known planets recovered 15/16; deterministic=True
+FAIL: differs from reference:
+  baseline/dev/truth_sha256
+  baseline/holdout/truth_sha256
+  candidate/dev/truth_sha256
+  candidate/holdout/truth_sha256

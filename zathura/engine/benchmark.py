@@ -99,7 +99,7 @@ def canonical_truth(truth):
 
 
 def fingerprint(dataset_id):
-    """Platform-stable SHA-256 of the private truth table, recorded so runs can prove identical benchmarks."""
+    """Canonicalized truth-table SHA-256; cross-platform equality remains under investigation."""
     _, truth = build(dataset_id)
     blob = json.dumps(canonical_truth(truth), sort_keys=True).encode()
     return hashlib.sha256(blob).hexdigest()

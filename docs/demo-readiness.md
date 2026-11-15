@@ -2,6 +2,21 @@
 
 Status as of branch `devin/*-demo-readiness`, based on `main` at `40763b0`.
 
+Integration note: the evidence below was captured on that four-page frontend. This PR
+also integrates `main` at `1a721dd`, preserving the approved Home / Explore stars /
+Research / How it works / Technical report layout. Run-state, duplicate-launch,
+significance, mode-label, and narrow-screen fixes are carried into those pages.
+References below to Find, Improve, Results, and Technical details describe the
+original verification session, not the current navigation. The current frontend
+has one research setup using the shared default of three rounds. Its mode badge
+reports configuration rather than claiming that configured services are verified live.
+The saved live-run evidence has not been rerun during integration.
+
+**Open integration blocker:** reproduction on macOS arm64 with Python 3.10.12 and
+this lockfile still fails the canonical truth-hash checks. The benchmark scores,
+counts, source-curve checksums and known-planet detections match; the hash fix is
+not yet portable. See §11 before merging or claiming cross-platform reproduction.
+
 ## 1. Setup, startup, tests, reproduction
 
 Python **3.10.12** (Linux x86_64 verified). Pinned environment: `requirements.lock`
@@ -86,8 +101,9 @@ detector finds the **catalog period**; it is not independent planet confirmation
 - `scripts/reproduce.py` now exits nonzero when the reference is missing, a label or config has no reference, or anything differs.
 - Clean-environment check (fresh clone + fresh venv from `requirements.lock`): two consecutive runs both
   PASS with identical output: `docs/evidence/reproduction-clean-env.txt`.
-- Limitation: cross-platform equality was not re-tested on a second machine here. If a platform produces
-  different *counts*, that is a real failure and must not be absorbed by tolerances.
+- The original verification was Linux-only. Integration subsequently tested macOS arm64
+  and found canonical truth-hash mismatches (§11). If a platform produces different
+  *counts*, that is a real failure and must not be absorbed by tolerances.
 
 ## 6. Planet-vs-binary screening (offline, `scripts/validate_vetting.py`)
 
@@ -169,3 +185,29 @@ past.dev, not the local mirror. Sanitized record: `docs/evidence/live-run-2026-1
 
 Conclusion: the live loop worked end to end and reported honestly, but it found no real improvement in 3 rounds.
 The hand-supplied candidate (§4) is much stronger, but it was not produced by the AI.
+
+## 11. Integration validation (macOS arm64)
+
+The three completed Devin commits were integrated with the merged five-page frontend
+at `1a721dd`. Python 3.10.12 and every dependency in `requirements.lock` installed
+successfully in a fresh local environment. No service credentials were used.
+
+- Unit/regression tests: **62 passed, 27 subtests passed**. Coverage includes launch
+  disabling, duplicate-launch feedback, interrupted-run status, and significance labels
+  on the current frontend.
+- Dashboard smoke: all five pages render with empty and cached data; browsing Home
+  starts no research; explicit launch uses three rounds; Explore retains the labelled
+  binary example, source photometry and BLS plots.
+- Reproduction: **FAIL, exit 1**. All four baseline/candidate dev/holdout comparisons
+  fail only `truth_sha256`; metrics, counts, curve checksums and known-planet checks
+  pass the script's comparisons. Both repeated dev runs are deterministic. Evidence:
+  `docs/evidence/reproduction-macos-arm64.txt`. Nine-significant-digit canonicalization
+  has not resolved the cross-platform mismatch; no tolerance was loosened and the
+  reference was not overwritten to force a pass.
+- Vetting: all classifications and test pass/fail decisions are unchanged. Numeric
+  diagnostics vary on this platform, so the committed reference report was preserved.
+- The live run in §10 is preserved as recorded evidence from Devin's session, rather
+  than a second live run performed during integration.
+
+Bilal should review the integration and resolve the hash discrepancy before treating
+the reproduction work as complete.
