@@ -25,10 +25,10 @@
      "recovery_snr_12_18": 0.6341463414634146,
      "recovery_snr_18_25": 0.5806451612903226
     },
-    "runtime_s": 3.1794261909999477,
-    "truth_sha256": "1bc9194b06bd3477c3677bd0dca48e4b8c8b515070c824ba9f61f6254457292c",
+    "runtime_s": 3.830984526000975,
+    "truth_sha256": "6ca024ce2c4a4fd9215876ece2beb58faf6e84a3d58b66390e3cb2d5c88fac11",
     "curves_sha256": "23aa090420ec42071a03b2e970c8b8e515f367e5814fadd56d93f2abd0a7a838",
-    "run_id": "5c3a9a396583423d92b806f82bd084dc"
+    "run_id": "2da5e2edda6b48faab5853edd372abee"
    },
    "holdout": {
     "measurements": {
@@ -45,10 +45,10 @@
      "recovery_snr_12_18": 0.5714285714285714,
      "recovery_snr_18_25": 0.5757575757575758
     },
-    "runtime_s": 2.885431411000127,
-    "truth_sha256": "38631a51e3ab07c6f010d298c68bb8ac9d14d9b5be7e2ef367a4f4dcc6b8cef7",
+    "runtime_s": 4.548791314000482,
+    "truth_sha256": "63debb333963f63f47f4d2a7d275cc77895f35dcd75afa7c17ea1647cd22d3b1",
     "curves_sha256": "486df4ba2b4e339ce0df084cd3f5fe5cb1666252ca52e25def44c5d4d5fb5074",
-    "run_id": "d26680cb071842d096f3d128caa55abb"
+    "run_id": "3dde587829224d71ac98771449b2ca56"
    },
    "deterministic": true
   },
@@ -76,10 +76,10 @@
      "recovery_snr_12_18": 0.8048780487804879,
      "recovery_snr_18_25": 0.8064516129032258
     },
-    "runtime_s": 8.775453336000055,
-    "truth_sha256": "1bc9194b06bd3477c3677bd0dca48e4b8c8b515070c824ba9f61f6254457292c",
+    "runtime_s": 9.449234837999029,
+    "truth_sha256": "6ca024ce2c4a4fd9215876ece2beb58faf6e84a3d58b66390e3cb2d5c88fac11",
     "curves_sha256": "23aa090420ec42071a03b2e970c8b8e515f367e5814fadd56d93f2abd0a7a838",
-    "run_id": "99a986d88ff947b9b427a1d70382730e"
+    "run_id": "c8f5983e121a42c89e684d1c7a4baa24"
    },
    "holdout": {
     "measurements": {
@@ -96,10 +96,10 @@
      "recovery_snr_12_18": 0.6904761904761905,
      "recovery_snr_18_25": 0.7878787878787878
     },
-    "runtime_s": 8.684022080999966,
-    "truth_sha256": "38631a51e3ab07c6f010d298c68bb8ac9d14d9b5be7e2ef367a4f4dcc6b8cef7",
+    "runtime_s": 9.390028204999908,
+    "truth_sha256": "63debb333963f63f47f4d2a7d275cc77895f35dcd75afa7c17ea1647cd22d3b1",
     "curves_sha256": "486df4ba2b4e339ce0df084cd3f5fe5cb1666252ca52e25def44c5d4d5fb5074",
-    "run_id": "b557e03a6e3b4c36b235b158512470c4"
+    "run_id": "21b830d803564c9db58a26607a8efb85"
    },
    "deterministic": true
   }

@@ -127,7 +127,7 @@ def _data_provenance(dataset_id):
     hosts = load_catalog()["hosts"][dataset_id]
     return {"catalog_version": load_catalog()["version"], "catalog_sha256": _sha256_files([CATALOG_PATH]),
             "curves_sha256": _sha256_files([cache_path(k) for k in hosts]),
-            "truth_sha256": benchmark.fingerprint(dataset_id), "seed": benchmark.SEEDS[dataset_id],
+            "truth_sha256": benchmark.fingerprint(dataset_id), "truth_sha256_raw": benchmark.raw_fingerprint(dataset_id), "seed": benchmark.SEEDS[dataset_id],
             "host_count": len(hosts)}
 
 

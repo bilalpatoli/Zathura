@@ -184,8 +184,13 @@ min(8, CPUs)); astropy's BLS kernel releases the GIL.
 ```
 
 Re-runs baseline and a tuned candidate on dev and holdout, repeats dev to check
-determinism, validates known planets, and compares every non-timing number with
-`data/reference_results.json` (`--update-reference` rewrites it).
+determinism, validates known planets, and compares with `data/reference_results.json`
+(`--update-reference` rewrites it). It exits nonzero on any mismatch or a missing reference.
+Configurations, counts, detection decisions and checksums must match exactly; floating-point
+statistics (bootstrap intervals, BLS SDE/period) use a 1e-6 relative tolerance. The truth hash
+is computed over injection parameters rounded to 9 significant digits so last-bit float
+differences across CPUs/NumPy builds do not change benchmark identity. Use `requirements.lock`
+for the pinned environment. See `docs/demo-readiness.md`.
 
 JSONL experiment records live at `data/experiments.jsonl`; engine run JSON files
 live at `data/runs/`. Both are local, ignored artifacts. Storage is append-only

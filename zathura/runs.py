@@ -54,18 +54,34 @@ def selected_measurements(view):
     return max([base, *measured], key=lambda m: m.get("balanced_accuracy", float("-inf")))
 
 
+def final_test_within_noise(evaluation):
+    low = evaluation.get("delta_vs_baseline_ci_low")
+    high = evaluation.get("delta_vs_baseline_ci_high")
+    if low is not None and high is not None:
+        return low <= 0 <= high
+    return evaluation.get("significant_vs_baseline") is False
+
+
 def outcome(view, status):
     if status == "running":
         return "running", "Research in progress", "Results update as each round finishes."
+    if status == "interrupted":
+        return ("stopped", "Interrupted", "The app stopped before this run finished. Completed rounds are preserved; "
+                + ("no final test was recorded." if not view["holdout"] else "the recorded final test remains available."))
     if status != "complete":
         return ("stopped", "Stopped", "The run ended before finishing. Completed rounds are shown; no final test was recorded."
                 if not view["holdout"] else "The run ended before finishing.")
     if not any(r["accepted"] for r in view["current"]):
         return ("unchanged", "Unchanged",
                 "No proposed change beat the starting method on development stars, so Zathura kept the starting method.")
-    delta = ((view["holdout"] or {}).get("evaluation_result") or {}).get("delta")
+    evaluation = (view["holdout"] or {}).get("evaluation_result") or {}
+    delta = evaluation.get("delta")
     if delta is None:
         return "improved", "Improved on development stars", "The final test result was not recorded."
+    if delta != 0 and final_test_within_noise(evaluation):
+        return ("unchanged", "Final-test difference is within noise",
+                "The selected method scored " + ("higher" if delta > 0 else "lower")
+                + " on the final test, but the difference is not statistically significant.")
     if delta > 0:
         return ("improved", "Improved",
                 "The selected method beat the starting method on development stars and on the final test.")
@@ -126,6 +142,9 @@ def describe(event):
         if not p.get("measurements"):
             return f"{label}Not tested", "The Skeptic did not approve this change, so no score was recorded."
         if p.get("accepted"):
+            if ((p.get("record") or {}).get("evaluation_result") or {}).get("significant_vs_best") is False:
+                return (f"{label}Kept the change (within noise)",
+                        "Its score was higher, but the gain is not statistically significant. The loop keeps point-estimate increases.")
             return f"{label}Kept the change", "It scored higher than the best method so far on development stars."
         return f"{label}Rejected the change", "It did not score higher than the best method so far."
     if step == "error":

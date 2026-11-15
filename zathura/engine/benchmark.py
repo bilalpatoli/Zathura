@@ -79,8 +79,34 @@ def build(dataset_id):
     return examples, truth
 
 
+TRUTH_DIGITS = 9
+
+
+def canonical_truth(truth):
+    """Truth rows with floats rounded to TRUTH_DIGITS significant digits.
+
+    Injection parameters come from exp/log and median filters whose last bits can differ across
+    CPUs and NumPy builds; hashing full float reprs made identical benchmarks look different.
+    Integers, booleans and star assignments stay exact.
+    """
+    def value(v):
+        if isinstance(v, (bool, np.bool_)):
+            return bool(v)
+        if isinstance(v, (int, np.integer)):
+            return int(v)
+        return float(f"{float(v):.{TRUTH_DIGITS}g}")
+    return [{k: value(v) for k, v in row.items()} for row in truth]
+
+
 def fingerprint(dataset_id):
-    """SHA-256 of the private truth table, recorded so runs can prove identical benchmarks."""
+    """Canonicalized truth-table SHA-256; cross-platform equality remains under investigation."""
+    _, truth = build(dataset_id)
+    blob = json.dumps(canonical_truth(truth), sort_keys=True).encode()
+    return hashlib.sha256(blob).hexdigest()
+
+
+def raw_fingerprint(dataset_id):
+    """Legacy full-precision hash (pre-canonicalization); platform dependent, kept for audit only."""
     _, truth = build(dataset_id)
     blob = json.dumps(truth, sort_keys=True, default=float).encode()
     return hashlib.sha256(blob).hexdigest()

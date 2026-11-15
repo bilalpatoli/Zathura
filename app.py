@@ -16,7 +16,7 @@ from zathura.engine.data import cache_path, read_curve
 from zathura.engine.detect import search
 from zathura.engine.vetting import vet_candidate, vetting_targets
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
-from zathura.runs import (counts, describe, elapsed, outcome, plain_result, run_list, run_view,
+from zathura.runs import (counts, describe, elapsed, final_test_within_noise, outcome, plain_result, run_list, run_view,
                           selected_measurements)
 from zathura.schema import BASELINE_CONFIG
 from zathura.story import render_how_it_works
@@ -172,12 +172,14 @@ def status_label(status):
     return f"Running · round {status['iteration']} of {status['rounds']}" if status.get("rounds") else f"Running · round {status['iteration']}"
 
 
-@st.fragment(run_every=5)
+@st.fragment(run_every=3)
 def topbar(title):
     status = mission().status()
-    demo = '<div class="z-pill demo">Demo mode</div>' if demo_mode() else ""
+    mode = ('<div class="z-pill demo" title="Mock scientist and skeptic responses; other configured services may still run">'
+            'DEMO MODE · MOCK AI</div>' if demo_mode() else
+            '<div class="z-pill" title="OpenAI configured; this is not verification of service availability">API CONFIGURED</div>')
     html_block(f'<div class="z-topbar"><div class="z-crumb">{icon("home", 20, 1.5)}{icon("chevron", 15, 1.8)}<span>{title}</span></div>'
-               f'<div class="z-status">{demo}<div class="z-pill{" running" if status["running"] else ""}"><i></i>{status_label(status)}</div>'
+               f'<div class="z-status">{mode}<div class="z-pill{" running" if status["running"] else ""}"><i></i>{status_label(status)}</div>'
                f'<div class="z-divider"></div></div></div>')
 
 
@@ -470,13 +472,15 @@ def render_explore(state):
 def run_status(run, worker_status, runs):
     if worker_status["running"] and runs and run["loop_id"] == runs[0]["loop_id"]:
         return "running"
-    return run["status"]
+    return "interrupted" if run["status"] == "incomplete" else run["status"]
 
 
 def start_research(worker):
     if worker.launch(st.session_state.get("research_rounds", DEFAULT_ROUNDS)):
         st.session_state["research_view"] = "Overview"
         st.toast("Research started.")
+    else:
+        st.warning("Research is already running; this click did not start another run.")
 
 
 def setup_area(worker, state, title="Start a research run"):
@@ -485,8 +489,8 @@ def setup_area(worker, state, title="Start a research run"):
                'change to the planet detector, the Skeptic reviews it, and approved changes are tested.</div>'
                f'<div class="z-text">Tests use simulated transit signals added to real Kepler observations of {roles.count("dev")} '
                f'development stars, so the right answers are known. A final test on {roles.count("holdout")} different stars runs at the end.</div>')
-    mode = ("<b>Demo mode</b> · recorded AI responses, no paid API calls." if demo_mode()
-            else "<b>Live mode</b> · calls OpenAI and Exa, which may incur charges.")
+    mode = ("<b>Demo mode</b> · mock scientist and skeptic responses. Other configured services may incur charges." if demo_mode()
+            else "<b>API configured</b> · configured services may incur charges.")
     html_block(f'<div class="z-mode">{mode}</div>')
     with st.expander("Advanced settings"):
         rounds = st.selectbox("Research rounds", list(range(1, 11)), index=DEFAULT_ROUNDS - 1, width=254, key="research_rounds")
@@ -613,8 +617,17 @@ def render_run_results(view, run, status):
             base = holdout_baseline(view["holdout"])
             st.dataframe(method_rows(base, view["holdout"]["measurements"]) if base else
                          method_rows(None, view["holdout"]["measurements"]), hide_index=True, width="stretch")
+            evaluation = view["holdout"].get("evaluation_result") or {}
+            if evaluation.get("delta") and final_test_within_noise(evaluation):
+                st.caption("The difference is within noise (not statistically significant).")
+            elif evaluation.get("delta") and all(evaluation.get(key) is not None for key in
+                                                 ("delta_vs_baseline_ci_low", "delta_vs_baseline_ci_high")):
+                st.caption("The difference is statistically significant.")
         else:
-            st.write("The final test runs when research finishes." if status == "running" else "No final test was recorded for this run.")
+            st.write({"running": "The final test runs when research finishes.",
+                      "interrupted": "This run was interrupted before the final test; no held-out result was recorded.",
+                      "stopped": "This run stopped with an error before the final test."}.get(
+                          status, "No final test was recorded for this run."))
     rows = [{"Run": "Starting method", "Review": "baseline", **start}]
     rows += [{"Run": f"Round {i}", "Review": r["reviewer_decision"]["decision"], **r["measurements"]}
              for i, r in enumerate(view["current"], 1)]
