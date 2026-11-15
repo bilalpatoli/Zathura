@@ -69,6 +69,9 @@ def outcome(view, status):
     if delta > 0:
         return ("improved", "Improved",
                 "The selected method beat the starting method on development stars and on the final test.")
+    if delta == 0:
+        return ("unchanged", "Equal on the final test",
+                "The selected method helped on development stars and tied the starting method on unseen stars.")
     return ("worse", "Worse on the final test",
             "The selected method helped on development stars but did not beat the starting method on unseen stars.")
 

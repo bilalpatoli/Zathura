@@ -12,7 +12,9 @@ import streamlit as st
 
 from zathura.dashboard import DEFAULT_ROUNDS, ROUNDS_HELP, Mission, snapshot
 from zathura.engine import get_experiment_results, inspect_target
-from zathura.engine.vetting import vet_candidate
+from zathura.engine.data import cache_path, read_curve
+from zathura.engine.detect import search
+from zathura.engine.vetting import vet_candidate, vetting_targets
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
 from zathura.runs import (counts, describe, elapsed, outcome, plain_result, run_list, run_view,
                           selected_measurements)
@@ -20,6 +22,8 @@ from zathura.schema import BASELINE_CONFIG
 from zathura.story import render_how_it_works
 
 ASSETS = Path(__file__).resolve().parent / "assets"
+BENCHMARK_DISCLOSURE = ("Benchmark transits are synthetic injections into real Kepler photometry; "
+                        "historical mock/placeholder output stays labelled.")
 SVG = {
     "grid": '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>'
             '<rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -65,13 +69,16 @@ def badge(source):
         st.markdown('<span class="real-source">REAL Kepler source</span>', unsafe_allow_html=True)
 
 
-def page_header(title, subtitle=None, text=None, subtitle_size=20, title_size=38, offset=0, bottom=0, text_gap=5):
+def page_header(title, subtitle=None, text=None, subtitle_size=20, title_size=38, offset=0, bottom=0, text_gap=5,
+                benchmark=True):
     parts = [f'<div class="z-title" style="font-size:{title_size}px">{title}</div>']
     if subtitle:
         parts.append(f'<div class="z-subtitle" style="font-size:{subtitle_size}px">{subtitle}</div>')
     if text:
         parts.append(f'<div class="z-text" style="margin-top:{text_gap}px">{text}</div>')
     html_block(f'<div class="z-head" style="margin:{offset}px 0 {bottom}px">{"".join(parts)}</div>')
+    if benchmark:
+        st.caption(BENCHMARK_DISCLOSURE)
 
 
 def metric_cards(items, compact=False):
@@ -133,15 +140,24 @@ def mission():
 
 @st.cache_data(show_spinner=False)
 def target_diagnostic(target):
-    return inspect_target(target)
-
-
-def service_line():
-    mock = os.getenv("ZATHURA_MOCK") == "1"
-    openai = "LIVE" if os.getenv("OPENAI_API_KEY") and not mock else "MOCK"
-    exa = "LIVE" if os.getenv("EXA_API_KEY") and not mock else "MOCK"
-    pastdev = "REMOTE-FIRST / LIVE" if os.getenv("PASTDEV_API_KEY") else "LOCAL JSONL"
-    return f"OpenAI: {openai} &nbsp;·&nbsp; Exa: {exa} &nbsp;·&nbsp; past.dev: {pastdev}"
+    binary = next((t for t in vetting_targets() if t["truth"] == "EB" and target == f'KIC {t["kepid"]}'), None)
+    if binary is None:
+        return inspect_target(target)
+    curve = read_curve(binary["kepid"])
+    if curve["origin"] != "real":
+        raise ValueError("Binary examples require real source photometry")
+    valid = np.isfinite(curve["time"]) & np.isfinite(curve["flux"])
+    t, flux = curve["time"][valid], curve["flux"][valid]
+    if len(t) < 10 or np.ptp(t) <= 2:
+        raise ValueError("Insufficient finite light-curve samples for BLS")
+    order = np.argsort(t)
+    t, flux = t[order], flux[order] / np.median(flux)
+    result = search(t, flux, BASELINE_CONFIG)
+    phase = (result["time"] - result["epoch"] + result["period_days"] / 2) % result["period_days"] - result["period_days"] / 2
+    return result | {"target_id": target, "flux": np.interp(result["time"], t, flux), "phase": phase,
+                     "in_transit": np.abs(phase) < result["duration_days"] / 2, "known_periods": None,
+                     "quarter": int(curve["quarter"]), "product": curve["product"],
+                     "curve_origin": curve["origin"], "data_source": "real"}
 
 
 def demo_mode():
@@ -168,6 +184,11 @@ def topbar(title):
 def render_sponsors(state):
     page_header("Technical report", text="Sponsor API evidence, memory transports and raw audit records for the latest run. "
                                      "Browsing makes no remote requests.", title_size=36, text_gap=4)
+    mock = os.getenv("ZATHURA_MOCK") == "1"
+    openai = "API configured" if os.getenv("OPENAI_API_KEY") and not mock else "MOCK"
+    exa = "API configured" if os.getenv("EXA_API_KEY") and not mock else "MOCK"
+    pastdev = "REMOTE-FIRST configured" if os.getenv("PASTDEV_API_KEY") else "LOCAL JSONL"
+    st.caption(f"OpenAI: {openai} · Exa: {exa} · past.dev: {pastdev}")
     chains = proposal_chains(state["latest"])
     authors = {m["memory_id"]: m["agent_id"] for m in state["memories"]}
     left, right = st.columns(2)
@@ -267,8 +288,18 @@ def lead(text):
 
 
 def target_label(target):
-    catalog = "known planet host" if target.get("known_periods") else "no known planet"
+    catalog = ("known eclipsing binary" if target.get("truth") == "EB" else
+               "known planet host" if target.get("known_periods") else "no known planet")
     return " · ".join(filter(None, [target.get("name"), target["target_id"]])) + f"  ({catalog})"
+
+
+def explore_targets(state):
+    targets = {t["target_id"]: t for t in state["targets"]}
+    if targets:
+        for target in vetting_targets():
+            if target["truth"] == "EB" and cache_path(target["kepid"]).exists():
+                targets.setdefault(f'KIC {target["kepid"]}', target | {"target_id": f'KIC {target["kepid"]}'})
+    return targets
 
 
 def catalog_match(curve):
@@ -357,7 +388,7 @@ def render_explore(state):
     if not state["targets"]:
         st.info("No cached light curves. Rebuild them with scripts/build_catalog.py.")
         return
-    targets = {t["target_id"]: t for t in state["targets"]}
+    targets = explore_targets(state)
     if st.session_state.get("explore_target") not in targets:
         st.session_state["explore_target"] = EXAMPLE_TARGET if EXAMPLE_TARGET in targets else next(iter(targets))
     target = st.selectbox("Star", list(targets), format_func=lambda t: target_label(targets[t]), key="explore_target", width=694,
@@ -378,7 +409,9 @@ def render_explore(state):
     observation = (f"Brightness dips repeat about every {curve['period_days']:.2f} days." if curve["detected"]
                    else "No repeating dip stood out above the detection threshold.")
     html_block(f'<div class="z-observation">{observation}</div>')
-    if known:
+    if targets[target].get("truth") == "EB":
+        catalog = ("Known eclipsing binary", "Catalogued as two stars crossing each other.")
+    elif known:
         periods = ", ".join(f"{p:.2f}" for p in known)
         catalog = ("Known planet host", f"NASA lists {'planets' if len(known) > 1 else 'a planet'} every {periods} days.")
     else:
@@ -393,6 +426,8 @@ def render_explore(state):
     for col, (label, (title, text)) in zip(st.columns(3, gap="small"), [("Catalog", catalog), ("This analysis", analysis), ("Data", origin)]):
         with col:
             html_block(f'<div class="z-fact"><div class="label">{label}</div><div class="title">{title}</div><div class="text">{text}</div></div>')
+    if targets[target].get("truth") == "EB":
+        st.link_button("Catalog classification", targets[target]["source"])
     prefix = "" if curve["detected"] else "Strongest peak · "
     metric_cards([(prefix + "Repeats every", f"{curve['period_days']:.2f} days"),
                   (prefix + "Brightness drop", f"{curve['depth'] * 100:.3f}%"),
@@ -463,13 +498,13 @@ def setup_area(worker, state, title="Start a research run"):
 def method_rows(start, selected):
     rows = []
     for label, m in (("Starting method", start), ("Selected method", selected)):
-        if not m:
+        if m is None:
             continue
         c = counts(m)
         found = f"{c['recovery_rate'][0]} of {c['recovery_rate'][1]}" if "recovery_rate" in c else "—"
         alarms = f"{c['false_alarm_rate'][0]} of {c['false_alarm_rate'][1]}" if "false_alarm_rate" in c else "—"
-        rows.append({"Method": label, "Test signals recovered": f"{found} ({m.get('recovery_rate', 0):.0%})",
-                     "False alarms on quiet stars": f"{alarms} ({m.get('false_alarm_rate', 0):.0%})",
+        rows.append({"Method": label, "Test signals recovered": f"{found} ({m['recovery_rate']:.0%})" if "recovery_rate" in m else "—",
+                     "False alarms on quiet stars": f"{alarms} ({m['false_alarm_rate']:.0%})" if "false_alarm_rate" in m else "—",
                      "Runtime": f"{m['runtime_s']:.1f} s" if m.get("runtime_s") is not None else "—"})
     return pd.DataFrame(rows)
 
@@ -584,6 +619,8 @@ def render_run_results(view, run, status):
     rows += [{"Run": f"Round {i}", "Review": r["reviewer_decision"]["decision"], **r["measurements"]}
              for i, r in enumerate(view["current"], 1)]
     with st.expander("Detailed results"):
+        host_count = (view["baseline"] or {}).get("provenance", {}).get("host_count", 0)
+        st.caption(f"Stars analyzed: {host_count}")
         frame = pd.DataFrame(rows)
         st.dataframe(frame, hide_index=True, width="stretch")
         st.download_button("Download results (CSV)", frame.to_csv(index=False), file_name=f"zathura-{run['loop_id']}.csv",
@@ -604,9 +641,21 @@ def render_run_results(view, run, status):
             st.caption("Selected configuration: " + ", ".join(f"{k} = {v}" for k, v in view["summary"]["best_config"].items()))
 
 
+def render_run_source(view):
+    source = (view["baseline"] or {}).get("data_source")
+    if source == "placeholder":
+        st.warning("Stand-in engine (placeholder) run")
+        st.caption("Stand-in scores, not measurements on real Kepler observations.")
+    elif source == "real":
+        badge(source)
+        st.caption(BENCHMARK_DISCLOSURE)
+    else:
+        st.caption("Data source not recorded for this run.")
+
+
 def render_research(state, worker):
-    page_header("Research", text="Zathura’s AI proposes changes to its planet detector and tests them on simulated "
-                                 "signals added to real Kepler observations.", title_size=36, text_gap=4)
+    page_header("Research", text="Zathura’s AI proposes changes to its planet detector and tests them.",
+                title_size=36, text_gap=4, benchmark=False)
     runs = run_list(state["events"])
     worker_status = worker.status()
     if not runs:
@@ -638,6 +687,7 @@ def render_research(state, worker):
                                          label_visibility="collapsed") or "Overview"
     run = by_id[loop_id]
     view = run_view(state, loop_id)
+    render_run_source(view)
     status = run_status(run, worker_status, runs)
     if view_name == "Activity":
         render_activity(view, state)

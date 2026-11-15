@@ -58,12 +58,12 @@ img[data-testid="stSidebarLogo"] {height:34px!important;max-width:180px!importan
 .z-empty .sub {font-size:16px;color:#c9cdd4;margin-top:8px;}
 .z-list {display:flex;flex-direction:column;gap:17px;margin-top:14px;padding-left:22px;font-size:17px;color:#eceef1;}
 .z-list div {display:flex;align-items:center;gap:20px;} .z-list svg {color:#c9ced6;flex:none;}
-.z-validation {display:flex;align-items:center;height:57px;box-sizing:border-box;padding:0 23px;border:1px solid #2c4b69;border-radius:6px;
+.z-validation {display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;box-sizing:border-box;padding:14px 23px;border:1px solid #2c4b69;border-radius:6px;
   background:linear-gradient(90deg,#1c324b,#1a2e46);}
-.z-validation .big {font-size:28px;font-weight:700;color:#d9e6f5;white-space:nowrap;}
-.z-validation .bar {width:1px;height:26px;background:#8da2bb;margin:0 29px 0 31px;flex:none;}
-.z-validation .small {font-size:15.5px;color:#e6eaf0;}
-.z-source {height:57px;box-sizing:border-box;padding:5px 23px;border:1px solid #243041;border-radius:6px;background:#121b28;font-size:15.5px;
+.z-validation .big {flex:1 1 280px;min-width:0;font-size:28px;font-weight:700;color:#d9e6f5;overflow-wrap:anywhere;}
+.z-validation .bar {display:none;}
+.z-validation .small {flex:1 1 240px;min-width:0;font-size:15.5px;color:#e6eaf0;overflow-wrap:anywhere;}
+.z-source {box-sizing:border-box;padding:14px 23px;border:1px solid #243041;border-radius:6px;background:#121b28;font-size:15.5px;overflow-wrap:anywhere;
   color:#e6eaf0;line-height:22px;}
 .z-source a {color:#5aa9f0!important;text-decoration:underline;}
 .z-chart-title {font-size:16.5px;font-weight:700;color:#f0f2f5;line-height:22px;}

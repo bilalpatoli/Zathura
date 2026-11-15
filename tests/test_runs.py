@@ -31,6 +31,8 @@ class RunTests(unittest.TestCase):
                   event("a", "iteration_complete", {"iteration": 1, "record": {"experiment_id": "x"}})]
         view = run_view(state(events, [record], [{"loop_id": "a", "measurements": BETTER, "evaluation_result": {"delta": 0.1}}]), "a")
         self.assertEqual(outcome(view, "complete")[0], "improved")
+        view["holdout"]["evaluation_result"]["delta"] = 0.0
+        self.assertEqual(outcome(view, "complete")[:2], ("unchanged", "Equal on the final test"))
         view["holdout"]["evaluation_result"]["delta"] = -0.02
         self.assertEqual(outcome(view, "complete")[0], "worse")
         self.assertEqual(outcome(view, "stopped")[0], "stopped")
