@@ -129,3 +129,11 @@ img[data-testid="stSidebarLogo"] {height:34px!important;max-width:180px!importan
     .evidence-check {border-bottom:1px solid #27324a;padding:1.1rem 0;font-size:1rem;}
 
 .real-source {display:inline-block;color:#79e4df;border:1px solid #276567;background:#102a34;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;margin-bottom:6px;}
+@media (max-width: 768px) {
+  [data-testid="stSidebar"] {min-width:auto!important;max-width:85vw!important;width:auto!important;}
+  [data-testid="stSidebarCollapseButton"] {display:flex!important;}
+  .z-topbar {left:0;height:auto;}
+  .z-crumb {display:none;}
+  .z-status {position:static;margin-left:auto;margin-right:60px;flex-wrap:wrap;gap:4px;transform:scale(.85);transform-origin:right center;}
+  [data-testid="stMainBlockContainer"] {padding:64px 16px 32px 16px!important;}
+}

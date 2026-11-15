@@ -63,7 +63,7 @@ def render_find(state):
     fig.add_vrect(x0=-half, x1=half, fillcolor=VIOLET, opacity=.25, line_width=0)
     fig.update_xaxes(title="Hours from the dip")
     fig.update_yaxes(title="Brightness")
-    verdict = {VERDICTS[0]: "Planet", VERDICTS[1]: "Impostor: two stars", VERDICTS[2]: "No clear signal"}[result["verdict"]]
+    verdict = {VERDICTS[0]: "Planet candidate", VERDICTS[1]: "Impostor: two stars", VERDICTS[2]: "No clear signal"}[result["verdict"]]
     color = CYAN if result["verdict"] == VERDICTS[0] else ROSE if result["verdict"] == VERDICTS[1] else VIOLET
     left, right = st.columns([2, 1])
     with left:
@@ -122,19 +122,42 @@ def idea(proposal):
     return descriptions.get(changes[0], "Test the recorded idea on the same stars.") if changes else "Test the recorded idea on the same stars."
 
 
+def run_state(state, running):
+    """'none' | 'running' | 'complete' | 'stopped' | 'interrupted' for the latest recorded run."""
+    latest = state.get("latest") or []
+    if not latest:
+        return "none"
+    if running:
+        return "running"
+    steps = {event.get("step") for event in latest}
+    if "loop_complete" in steps:
+        return "complete"
+    if "error" in steps:
+        return "stopped"
+    return "interrupted"
+
+
 def render_improve(state, worker):
     st.title("Improve")
     st.write("The AI suggests a change. A skeptic challenges it. Only a measured improvement is kept.")
     status = worker.status()
     if st.button("Start AI research", type="primary", key="simple_start", disabled=status["running"]):
-        worker.launch(3)
-        st.info("Research started. The attempts below update automatically.")
-    st.caption("Research is running" if status["running"] else "Uses live services when configured; API calls may incur charges.")
+        if worker.launch(3):
+            st.rerun()
+        else:
+            st.warning("Research is already running; this click did not start another run.")
+    st.caption("Research is running. The attempts below update automatically." if status["running"] else "Uses live services when configured; API calls may incur charges.")
+    current_run_state = run_state(state, status["running"])
+    if current_run_state == "interrupted":
+        st.warning("The last run stopped before it finished (for example, the app restarted). Its recorded attempts are shown below; it has no final exam result.")
     if status["error"]:
         st.warning("Research stopped. Earlier results remain available; see Technical details.")
+    elif current_run_state == "stopped":
+        st.warning("The last run stopped with an error. Earlier results remain available; see Technical details.")
     rows = attempt_rows(state)
     if not rows:
-        st.info("Start AI research to see the first idea, challenge, test and memory.")
+        st.info("Measuring the starting method; the first attempt appears shortly." if status["running"]
+                else "Start AI research to see the first idea, challenge, test and memory.")
         return
     st.caption(SCORE_NOTE)
     source = (state.get("baseline") or {}).get("data_source")
@@ -174,7 +197,9 @@ def render_improve(state, worker):
                     color = "#71e6b0" if delta > 0 else ROSE if delta < 0 else "#ccd8ed"
                     arrow = "▲" if delta > 0 else "▼" if delta < 0 else "="
                     st.markdown(f'<div class="simple-score" style="color:{color}">{before:.1%} → {after:.1%} {arrow}</div>', unsafe_allow_html=True)
-                    st.caption("Kept as an improvement" if completion.get("accepted") else "Not kept as an improvement")
+                    significant = ((completion.get("record") or {}).get("evaluation_result") or {}).get("significant_vs_best")
+                    st.caption(("Kept: higher score" + ("" if significant else ", but within noise (not statistically significant)"))
+                               if completion.get("accepted") else "Not kept as an improvement")
                 else:
                     st.write("Not tested" if decision == "reject" else "Waiting for a result")
             with columns[3]:
@@ -208,10 +233,11 @@ def latest_holdout(state):
     return next((r for r in reversed(state["holdout"]) if loop_id and r.get("loop_id") == loop_id), None)
 
 
-def render_results(state):
+def render_results(state, running=False):
     st.title("Results")
     st.write("Did the AI get better — and did that carry over to stars it had not practiced on?")
     baseline, values, best = score_history(state)
+    current_run_state = run_state(state, running)
     left, right = st.columns([2, 1])
     with left:
         if baseline is None:
@@ -234,7 +260,12 @@ def render_results(state):
         holdout = latest_holdout(state)
         measured = (holdout or {}).get("measurements", {}).get("balanced_accuracy")
         if measured is None:
-            st.info("The final exam appears when this research mission finishes.")
+            message = {
+                "running": "The final exam appears when this research mission finishes.",
+                "interrupted": "This run was interrupted before the final exam, so there is no held-out result for it.",
+                "stopped": "This run stopped with an error before the final exam.",
+            }.get(current_run_state, "The final exam appears when this research mission finishes.")
+            st.info(message)
         else:
             source_note(holdout.get("data_source"))
             st.metric("Score on unseen stars", f"{measured:.1%}", help="Balanced accuracy on held-out stars; these stars were not used to select the best configuration.")

@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from streamlit.testing.v1 import AppTest
+
 from zathura import simple
 
 
@@ -14,6 +16,45 @@ def state():
 
 
 class SimpleTests(unittest.TestCase):
+    def test_run_state(self):
+        cases = (
+            ([], False, "none"),
+            ([event("hypothesis", {})], True, "running"),
+            ([event("hypothesis", {}), event("loop_complete", {})], False, "complete"),
+            ([event("hypothesis", {}), event("error", {})], False, "stopped"),
+            ([event("hypothesis", {})], False, "interrupted"),
+        )
+        for latest, running, expected in cases:
+            with self.subTest(latest=latest, running=running):
+                self.assertEqual(simple.run_state({"latest": latest}, running), expected)
+
+    def test_duplicate_launch_warns_without_starting_another_run(self):
+        class FakeWorker:
+            def __init__(self):
+                self.launch_calls = []
+
+            def status(self):
+                return {"running": False, "iteration": 0, "error": None}
+
+            def launch(self, iterations):
+                self.launch_calls.append(iterations)
+                return False
+
+        worker = FakeWorker()
+        data = state()
+
+        def app(data, worker):
+            from zathura import simple
+
+            simple.render_improve(data, worker)
+
+        app_test = AppTest.from_function(app, args=(data, worker)).run()
+        app_test.button(key="simple_start").click().run()
+
+        self.assertTrue(any("Research is already running; this click did not start another run." in warning.value
+                            for warning in app_test.warning))
+        self.assertEqual(worker.launch_calls, [3])
+
     def test_rejected_attempts_have_no_score_and_best_never_falls(self):
         data = state()
         for number, score in enumerate((.45, None, .42), 1):

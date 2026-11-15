@@ -44,7 +44,7 @@ def check(label, launch):
         if page == "Find":
             if label == "existing data":
                 assert app.selectbox(key="find_star").value == 6665695
-                assert any(">Planet</div>" in m.value for m in app.markdown)
+                assert any(">Planet candidate</div>" in m.value for m in app.markdown)
                 assert len(app.get("plotly_chart")) == 1
                 assert len(app.expander) == 1 and app.expander[0].label == "More checks"
                 binary = next(t["kepid"] for t in vetting_targets() if t["truth"] == "EB")

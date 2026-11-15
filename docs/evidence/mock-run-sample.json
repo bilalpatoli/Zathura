@@ -1,0 +1,207 @@
+{
+ "label": "MOCK run (ZATHURA_MOCK=1): canned agent/search responses on real Kepler benchmark data. Not evidence of live AI behavior.",
+ "loop_id": "02ee4eb7e0b041b29a45caf9765379cd",
+ "steps": [
+  {
+   "step": "targets",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:25.969115+00:00"
+  },
+  {
+   "step": "baseline",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:31.270094+00:00"
+  },
+  {
+   "step": "hypothesis",
+   "agent": "research-scientist",
+   "timestamp": "2026-11-15T00:33:31.270864+00:00"
+  },
+  {
+   "step": "review",
+   "agent": "skeptic",
+   "timestamp": "2026-11-15T00:33:31.271698+00:00"
+  },
+  {
+   "step": "experiment_started",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:31.271834+00:00"
+  },
+  {
+   "step": "evaluation",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:36.147590+00:00"
+  },
+  {
+   "step": "iteration_complete",
+   "agent": "orchestrator",
+   "timestamp": "2026-11-15T00:33:36.148046+00:00",
+   "iteration": 1,
+   "proposed_config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 5000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "reviewer": {
+    "decision": "approve",
+    "rationale": "[MOCK] Bounded single-parameter dev comparison is worth testing."
+   },
+   "cited_sources": [
+    {
+     "title": "[MOCK] Box-fitting algorithms for periodic transits (Kovacs et al.)",
+     "url": "https://arxiv.org/abs/astro-ph/0206099",
+     "mock": true
+    },
+    {
+     "title": "[MOCK] Transit Least Squares (Hippke & Heller)",
+     "url": "https://arxiv.org/abs/1901.02015",
+     "mock": true
+    }
+   ],
+   "balanced_accuracy": 0.428125,
+   "evaluation": {
+    "improved_vs_baseline": false,
+    "improved_vs_best": false,
+    "delta": -0.031250000000000056,
+    "delta_vs_best": -0.031250000000000056,
+    "delta_vs_baseline_ci_low": -0.08750000000000002,
+    "delta_vs_baseline_ci_high": 0.015624999999999944,
+    "significant_vs_baseline": false,
+    "delta_vs_best_ci_low": -0.08750000000000002,
+    "delta_vs_best_ci_high": 0.015624999999999944,
+    "significant_vs_best": false
+   },
+   "accepted": false,
+   "memory_refs_read": [
+    "6b1aa5c8ecf54785847e2abaa56e2a4e",
+    "53fa8e100bfd4297a70b3f62df275ad0"
+   ],
+   "memory_influence": {
+    "memory_ids": [],
+    "explanation": "No evidenced memory-driven change."
+   },
+   "result_memory_written": "68114a5478704ca199fb37529dd1bc01"
+  },
+  {
+   "step": "hypothesis",
+   "agent": "research-scientist",
+   "timestamp": "2026-11-15T00:33:36.149097+00:00"
+  },
+  {
+   "step": "review",
+   "agent": "skeptic",
+   "timestamp": "2026-11-15T00:33:36.149952+00:00"
+  },
+  {
+   "step": "experiment_started",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:36.150033+00:00"
+  },
+  {
+   "step": "evaluation",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:39.766246+00:00"
+  },
+  {
+   "step": "iteration_complete",
+   "agent": "orchestrator",
+   "timestamp": "2026-11-15T00:33:39.766686+00:00",
+   "iteration": 2,
+   "proposed_config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 1000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "reviewer": {
+    "decision": "approve",
+    "rationale": "[MOCK] Bounded single-parameter dev comparison is worth testing."
+   },
+   "cited_sources": [
+    {
+     "title": "[MOCK] Box-fitting algorithms for periodic transits (Kovacs et al.)",
+     "url": "https://arxiv.org/abs/astro-ph/0206099",
+     "mock": true
+    },
+    {
+     "title": "[MOCK] Transit Least Squares (Hippke & Heller)",
+     "url": "https://arxiv.org/abs/1901.02015",
+     "mock": true
+    }
+   ],
+   "balanced_accuracy": 0.4625,
+   "evaluation": {
+    "improved_vs_baseline": true,
+    "improved_vs_best": true,
+    "delta": 0.003124999999999989,
+    "delta_vs_best": 0.003124999999999989,
+    "delta_vs_baseline_ci_low": -0.025000000000000022,
+    "delta_vs_baseline_ci_high": 0.03749999999999998,
+    "significant_vs_baseline": false,
+    "delta_vs_best_ci_low": -0.025000000000000022,
+    "delta_vs_best_ci_high": 0.03749999999999998,
+    "significant_vs_best": false
+   },
+   "accepted": true,
+   "memory_refs_read": [
+    "68114a5478704ca199fb37529dd1bc01",
+    "53fa8e100bfd4297a70b3f62df275ad0",
+    "75bcecb1091b4c12b4c60002646ef10a",
+    "87863a4c8b0d462aaad051118520bbc4"
+   ],
+   "memory_influence": {
+    "memory_ids": [
+     "68114a5478704ca199fb37529dd1bc01"
+    ],
+    "explanation": "Deterministic memory veto changed the LLM's first-choice config {'detrend_window': 301, 'outlier_sigma': 5.0, 'period_grid_size': 10000, 'detection_threshold': 6.0, 'duration_min_days': 0.04, 'duration_max_days': 0.3}: prior failure/rejection in ['68114a5478704ca199fb37529dd1bc01']. Selected {'detrend_window': 301, 'outlier_sigma': 5.0, 'period_grid_size': 1000, 'detection_threshold': 6.0, 'duration_min_days': 0.04, 'duration_max_days': 0.3} instead."
+   },
+   "result_memory_written": "982fc0e6b35a4da88d04177c1aa43721"
+  },
+  {
+   "step": "holdout_started",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:39.766827+00:00"
+  },
+  {
+   "step": "holdout_complete",
+   "agent": "engine",
+   "timestamp": "2026-11-15T00:33:48.367110+00:00",
+   "measurements": {
+    "recovery_rate": 0.25,
+    "false_alarm_rate": 0.5,
+    "balanced_accuracy": 0.375,
+    "balanced_accuracy_ci_low": 0.271875,
+    "balanced_accuracy_ci_high": 0.48124999999999996,
+    "harmonic_rate": 0.06875,
+    "runtime_s": 4.039677000000665,
+    "runtime_per_curve_s": 0.16022729952997905,
+    "positive_count": 160.0,
+    "negative_count": 40.0,
+    "recovery_snr_5_8": 0.0,
+    "recovery_snr_8_12": 0.14285714285714285,
+    "recovery_snr_12_18": 0.5238095238095238,
+    "recovery_snr_18_25": 0.36363636363636365
+   }
+  },
+  {
+   "step": "loop_complete",
+   "agent": "orchestrator",
+   "timestamp": "2026-11-15T00:33:48.367239+00:00",
+   "best_config": {
+    "detrend_window": 301,
+    "outlier_sigma": 5.0,
+    "period_grid_size": 1000,
+    "detection_threshold": 6.0,
+    "duration_min_days": 0.04,
+    "duration_max_days": 0.3
+   },
+   "best_dev_balanced_accuracy": 0.4625,
+   "holdout_run_id": "31c2d6d6bf6f420bb9c8411e564ca36f"
+  }
+ ]
+}

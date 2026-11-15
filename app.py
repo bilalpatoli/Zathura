@@ -147,8 +147,11 @@ def service_line():
 def topbar(title):
     status = mission().status()
     label = f"RUNNING · ITERATION {status['iteration']}" if status["running"] else "IDLE"
+    demo = os.getenv("ZATHURA_MOCK") == "1" or not os.getenv("OPENAI_API_KEY")
+    mode = ('<div class="z-pill" style="color:#f3c969;border-color:#8a6d2b" title="Mock AI responses; no paid API calls">'
+            'DEMO MODE · MOCK AI</div>' if demo else '<div class="z-pill" title="Live OpenAI/Exa calls may incur charges">LIVE</div>')
     html_block(f'<div class="z-topbar"><div class="z-crumb">{icon("home", 20, 1.5)}{icon("chevron", 15, 1.8)}<span>{title}</span></div>'
-               f'<div class="z-status"><div class="z-pill{" running" if status["running"] else ""}"><i></i>{label}</div>'
+               f'<div class="z-status">{mode}<div class="z-pill{" running" if status["running"] else ""}"><i></i>{label}</div>'
                f'<div class="z-divider"></div></div></div>')
 
 
@@ -494,7 +497,7 @@ def live(render):
 
 def setup():
     st.set_page_config(page_title="Zathura · Mission Control", page_icon=str(ASSETS / "zathura_mark.png"), layout="wide",
-                       initial_sidebar_state="expanded")
+                       initial_sidebar_state="auto")
     st.logo(str(ASSETS / "zathura_logo.png"), size="large", icon_image=str(ASSETS / "zathura_mark.png"))
     variables = "".join(mask_var(name) for name in ("grid", "planet", "layers", "flask", "chevdown", "home", "database"))
     st.html(f"<style>:root{{{variables}}}\n{(ASSETS / 'zathura.css').read_text()}</style>")
@@ -544,7 +547,7 @@ def improve_page():
 
 def simple_results_page():
     topbar("Results")
-    live(simple.render_results)
+    live(lambda state: simple.render_results(state, mission().status()["running"]))
 
 
 def technical_page():

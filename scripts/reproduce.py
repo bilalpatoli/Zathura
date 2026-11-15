@@ -4,11 +4,13 @@
   .venv/bin/python scripts/reproduce.py --config best.json # also a tuned config on dev and holdout
   .venv/bin/python scripts/reproduce.py --update-reference # record the current results as reference
 
-Benchmark metrics are deterministic for fixed code, data and seeds, so anything other
-than runtime must match the reference exactly.
+Exits nonzero on any genuine failure, including a missing reference. Configurations, counts,
+detection decisions and checksums must match exactly; floating-point statistics use a 1e-6
+relative tolerance (see FLOAT_RTOL).
 """
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -62,24 +64,61 @@ def main():
     if not all(c["deterministic"] for c in report["configs"].values()):
         sys.exit("FAIL: repeated runs differ")
     if not REFERENCE.exists():
-        print("No reference results; run with --update-reference to create one.")
-        return
-    reference = json.loads(REFERENCE.read_text())
+        sys.exit(f"FAIL: no reference at {REFERENCE}; nothing was compared")
+    failures = compare(report, json.loads(REFERENCE.read_text()))
+    if failures:
+        sys.exit("FAIL: differs from reference:\n  " + "\n  ".join(failures))
+    print("PASS: matched the reference (exact: configs, counts, decisions, checksums; "
+          f"floats within rel {FLOAT_RTOL:g}; runtime excluded)")
+
+
+# Count-derived metrics are exact. Bootstrap CIs and BLS statistics are floating-point results whose last
+# bits can vary across CPUs/BLAS builds; 1e-6 relative is far below any scientifically meaningful change.
+FLOAT_RTOL = 1e-6
+EXACT_MEASUREMENTS = ("positive_count", "negative_count", "recovery_rate", "false_alarm_rate", "balanced_accuracy",
+                      "harmonic_rate", "recovery_snr_5_8", "recovery_snr_8_12", "recovery_snr_12_18", "recovery_snr_18_25")
+
+
+def close(a, b):
+    return math.isclose(a, b, rel_tol=FLOAT_RTOL, abs_tol=1e-12)
+
+
+def compare(report, reference):
     failures = []
+    if reference.get("benchmark_version") != report["benchmark_version"]:
+        failures.append(f"benchmark_version {report['benchmark_version']} != reference {reference.get('benchmark_version')}")
     for label, current in report["configs"].items():
         expected = reference["configs"].get(label)
-        if expected is None or expected["config"] != current["config"]:
-            print(f"SKIP {label}: no reference for this config")
+        if expected is None:
+            failures.append(f"{label}: no reference for this label")
+            continue
+        if expected["config"] != current["config"]:
+            failures.append(f"{label}: config differs from reference")
             continue
         for dataset in ("dev", "holdout"):
-            for key in ("measurements", "truth_sha256", "curves_sha256"):
-                if current[dataset][key] != expected[dataset][key]:
+            now, then = current[dataset], expected[dataset]
+            for key in ("truth_sha256", "curves_sha256"):
+                if now[key] != then.get(key):
                     failures.append(f"{label}/{dataset}/{key}")
-        if report["known_planets"][label]["planets"] != reference["known_planets"][label]["planets"]:
-            failures.append(f"{label}/known_planets")
-    if failures:
-        sys.exit("FAIL: differs from reference: " + ", ".join(failures))
-    print("PASS: reproduced reference results exactly (runtime excluded)")
+            if set(now["measurements"]) != set(then["measurements"]):
+                failures.append(f"{label}/{dataset}: measurement keys differ")
+            for key, value in now["measurements"].items():
+                ref = then["measurements"].get(key)
+                ok = value == ref if key in EXACT_MEASUREMENTS else ref is not None and close(value, ref)
+                if not ok:
+                    failures.append(f"{label}/{dataset}/{key}: {value!r} != {ref!r}")
+        planets = report["known_planets"][label]["planets"]
+        ref_planets = reference["known_planets"].get(label, {}).get("planets")
+        if ref_planets is None or len(planets) != len(ref_planets):
+            failures.append(f"{label}/known_planets: missing or different count")
+            continue
+        for now, then in zip(planets, ref_planets):
+            for key, value in now.items():
+                ref = then.get(key)
+                ok = close(value, ref) if isinstance(value, float) and isinstance(ref, float) else value == ref
+                if not ok:
+                    failures.append(f"{label}/known_planets/{now.get('target_id', '?')}/{key}: {value!r} != {ref!r}")
+    return failures
 
 
 if __name__ == "__main__":
