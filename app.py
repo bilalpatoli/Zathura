@@ -13,6 +13,7 @@ from zathura.dashboard import Mission, snapshot
 from zathura.engine import inspect_target
 from zathura.evidence import AGENT_NAMES, TRANSPORT_NAMES, config_change, memory_activity, proposal_chains
 from zathura.story import render_story
+from zathura import simple
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 BENCHMARK_DISCLOSURE = ("Benchmark transits are synthetic injections into real Kepler photometry; "
@@ -497,6 +498,7 @@ def setup():
     st.logo(str(ASSETS / "zathura_logo.png"), size="large", icon_image=str(ASSETS / "zathura_mark.png"))
     variables = "".join(mask_var(name) for name in ("grid", "planet", "layers", "flask", "chevdown", "home", "database"))
     st.html(f"<style>:root{{{variables}}}\n{(ASSETS / 'zathura.css').read_text()}</style>")
+    st.html(f"<style>{(ASSETS / 'simple.css').read_text()}</style>")
 
 
 def mission_page():
@@ -530,16 +532,45 @@ def sponsors_page():
     live(render_sponsors)
 
 
+def find_page():
+    topbar("Find")
+    simple.render_find(snapshot())
+
+
+def improve_page():
+    topbar("Improve")
+    live(lambda state: simple.render_improve(state, mission()))
+
+
+def simple_results_page():
+    topbar("Results")
+    live(simple.render_results)
+
+
+def technical_page():
+    topbar("Technical details")
+
+    live(render_technical)
+
+
+def render_technical(state):
+    renderers = [lambda: render_mission(state, mission()), lambda: render_planets(state),
+                 lambda: render_timeline(state), lambda: render_results(state), lambda: render_sponsors(state),
+                 simple.render_validation, lambda: render_story(state, mission())]
+    tabs = st.tabs(["Mission Control", "Planet Detection", "Timeline", "Experimental Results", "Sponsor Evidence",
+                    "Vetting validation", "Research Story"])
+    for tab, render in zip(tabs, renderers):
+        with tab:
+            render()
+
+
 def main():
     setup()
-    control = st.Page(mission_page, title="Mission Control", icon=":material/grid_view:", url_path="mission-control")
-    pages = [st.Page(story_page, title="Research Story", icon=":material/home:", default=True),
-             control,
-             st.Page(planets_page, title="Planet Detection", icon=":material/public:", url_path="planet-detection"),
-             st.Page(timeline_page, title="AI Research Timeline", icon=":material/layers:", url_path="ai-research-timeline"),
-             st.Page(lambda: results_page(control), title="Experimental Results", icon=":material/science:",
-                     url_path="experimental-results"),
-             st.Page(sponsors_page, title="Sponsor Evidence", icon=":material/database:", url_path="sponsor-evidence")]
+    st.markdown(f'<div class="simple-pitch">{simple.PITCH}</div>', unsafe_allow_html=True)
+    pages = [st.Page(find_page, title="Find", icon=":material/home:", default=True),
+             st.Page(improve_page, title="Improve", icon=":material/grid_view:", url_path="improve"),
+             st.Page(simple_results_page, title="Results", icon=":material/public:", url_path="results"),
+             st.Page(technical_page, title="Technical details", icon=":material/layers:", url_path="technical-details")]
     st.navigation(pages, position="sidebar").run()
 
 
